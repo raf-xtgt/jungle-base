@@ -1,11 +1,17 @@
 import './style.css'
 import { gameState } from './js/state.js'
 import { RESOURCE_REGISTRY, CRAFT_REGISTRY } from './js/registry.js'
-import { buildMapGrid } from './js/map.js'
+import { buildMapGrid, TILE_CONFIG } from './js/map.js'
+import { loadTileImages, renderMap } from './js/renderer.js'
 
 console.log('Erwin is alive');
 
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
 const grid = buildMapGrid(RESOURCE_REGISTRY);
-console.log('grid[7][7]:', grid[7][7]);
-console.log('grid[3][2]:', grid[3][2]);
-console.log('grid[0][0]:', grid[0][0]);
+
+loadTileImages(TILE_CONFIG).then((images) => {
+  renderMap(ctx, grid, images, TILE_CONFIG);
+  console.log('Map rendered');
+});
