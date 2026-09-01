@@ -66,3 +66,22 @@ export function renderPlayer(ctx, position) {
   ctx.lineWidth = 2;
   ctx.strokeRect(px, py, size, size);
 }
+
+export function renderGameOver(ctx, won) {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+
+  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.font = "bold 28px monospace";
+  ctx.fillStyle = won ? "#4ade80" : "#ef4444";
+  ctx.fillText(won ? "ERWIN SURVIVED!" : "ERWIN DIDN'T MAKE IT", w / 2, h / 2 - 16);
+
+  ctx.font = "16px monospace";
+  ctx.fillStyle = "#e0e0e0";
+  ctx.fillText(won ? "The shelter is built. He will survive the night." : "He could not hold on. The jungle won.", w / 2, h / 2 + 20);
+}

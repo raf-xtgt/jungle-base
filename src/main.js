@@ -2,11 +2,24 @@ import './style.css'
 import { gameState } from './js/state.js'
 import { RESOURCE_REGISTRY, CRAFT_REGISTRY } from './js/registry.js'
 import { buildMapGrid, TILE_CONFIG, GRID_SIZE } from './js/map.js'
-import { loadTileImages, renderMap, renderFog, renderPlayer } from './js/renderer.js'
+import { loadTileImages, renderMap, renderFog, renderPlayer, renderGameOver } from './js/renderer.js'
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
+import { addItem, removeItem, hasItems } from './js/inventory.js'
 
 console.log('Erwin is alive');
+
+// Inventory verification
+addItem(gameState, "water", 2);
+console.log('water after add 2:', gameState.inventory.water);
+console.log('hasItems water:3 =', hasItems(gameState, { water: 3 }));
+console.log('hasItems water:1 =', hasItems(gameState, { water: 1 }));
+console.log('removeItem water 5 =', removeItem(gameState, "water", 5));
+console.log('water after failed remove:', gameState.inventory.water);
+console.log('removeItem water 1 =', removeItem(gameState, "water", 1));
+console.log('water after remove 1:', gameState.inventory.water);
+// Reset water back to 0 for game start
+gameState.inventory.water = 0;
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -31,9 +44,14 @@ loadTileImages(TILE_CONFIG).then((images) => {
   let loopId = startGameLoop(gameState, () => {
     if (gameState.gameOver) {
       stopGameLoop(loopId);
-      console.log('GAME OVER — Erwin did not make it');
+      redraw();
+      renderGameOver(ctx, false);
     }
-    console.log(`health: ${gameState.health.toFixed(1)}  time: ${gameState.elapsedTime}s`);
+    if (gameState.gameWon) {
+      stopGameLoop(loopId);
+      redraw();
+      renderGameOver(ctx, true);
+    }
   });
 
   console.log('Game ready — use arrow keys or WASD to move');
