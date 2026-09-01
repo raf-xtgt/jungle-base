@@ -43,6 +43,17 @@ export function renderMap(ctx, grid, tileImages, tileConfig) {
   }
 }
 
+export function renderFog(ctx, exploredTiles, gridSize) {
+  for (let y = 0; y < gridSize; y++) {
+    for (let x = 0; x < gridSize; x++) {
+      if (!exploredTiles.has(`${x},${y}`)) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
+      }
+    }
+  }
+}
+
 export function renderPlayer(ctx, position) {
   const px = position.x * TILE_PX + 4;
   const py = position.y * TILE_PX + 4;

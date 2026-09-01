@@ -35,3 +35,18 @@ export function setupKeyboardInput(gameState, onMove) {
     onMove();
   });
 }
+
+export function updateExploredTiles(gameState) {
+  const px = gameState.position.x;
+  const py = gameState.position.y;
+
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      const tx = px + dx;
+      const ty = py + dy;
+      if (tx >= 0 && tx < GRID_SIZE && ty >= 0 && ty < GRID_SIZE) {
+        gameState.exploredTiles.add(`${tx},${ty}`);
+      }
+    }
+  }
+}
