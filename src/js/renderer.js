@@ -79,9 +79,37 @@ export function renderGameOver(ctx, won) {
 
   ctx.font = "bold 28px monospace";
   ctx.fillStyle = won ? "#4ade80" : "#ef4444";
-  ctx.fillText(won ? "ERWIN SURVIVED!" : "ERWIN DIDN'T MAKE IT", w / 2, h / 2 - 16);
+  ctx.fillText(won ? "ERWIN SURVIVED!" : "ERWIN DIDN'T MAKE IT", w / 2, h / 2 - 30);
 
   ctx.font = "16px monospace";
   ctx.fillStyle = "#e0e0e0";
-  ctx.fillText(won ? "The shelter is built. He will survive the night." : "He could not hold on. The jungle won.", w / 2, h / 2 + 20);
+  ctx.fillText(won ? "The shelter is built. He will survive the night." : "He could not hold on. The jungle won.", w / 2, h / 2 + 10);
+
+  ctx.font = "14px monospace";
+  ctx.fillStyle = "#facc15";
+  ctx.fillText("Press R to play again", w / 2, h / 2 + 50);
+}
+
+export function renderStartScreen(ctx) {
+  const w = ctx.canvas.width;
+  const h = ctx.canvas.height;
+
+  ctx.fillStyle = "#1a1a2e";
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.font = "bold 32px monospace";
+  ctx.fillStyle = "#f5c542";
+  ctx.fillText("ERWIN'S SURVIVAL", w / 2, h / 2 - 50);
+
+  ctx.font = "14px monospace";
+  ctx.fillStyle = "#e0e0e0";
+  ctx.fillText("Erwin has crash-landed in the jungle.", w / 2, h / 2);
+  ctx.fillText("Help him survive.", w / 2, h / 2 + 22);
+
+  ctx.font = "14px monospace";
+  ctx.fillStyle = "#4ade80";
+  ctx.fillText("Press any arrow key to start", w / 2, h / 2 + 60);
 }

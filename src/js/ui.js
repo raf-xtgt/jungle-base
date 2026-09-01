@@ -45,3 +45,40 @@ export function addLogEntry(message, tip) {
   log.appendChild(entry);
   log.scrollTop = log.scrollHeight;
 }
+
+let debugPanelEl = null;
+
+export function setupDebugPanel(toolHandlers, refreshUI, redraw) {
+  if (!new URLSearchParams(window.location.search).has('debug')) return;
+
+  const sidePanel = document.getElementById('side-panel');
+  debugPanelEl = document.createElement('div');
+  debugPanelEl.id = 'debug-panel';
+  debugPanelEl.innerHTML = '<h3>Debug — Simulate Agent</h3>';
+  sidePanel.appendChild(debugPanelEl);
+
+  updateDebugButtons(toolHandlers, refreshUI, redraw);
+}
+
+export function updateDebugButtons(toolHandlers, refreshUI, redraw) {
+  if (!debugPanelEl) return;
+
+  const h3 = debugPanelEl.querySelector('h3');
+  debugPanelEl.innerHTML = '';
+  debugPanelEl.appendChild(h3);
+
+  for (const toolName of Object.keys(toolHandlers)) {
+    const btn = document.createElement('button');
+    btn.className = 'debug-btn';
+    btn.textContent = toolName;
+    btn.addEventListener('click', async () => {
+      const result = await toolHandlers[toolName]({});
+      if (result && !result.error) {
+        addLogEntry(`[debug] called ${toolName}`, null);
+      }
+      refreshUI();
+      redraw();
+    });
+    debugPanelEl.appendChild(btn);
+  }
+}
