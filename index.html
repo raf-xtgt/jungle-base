@@ -7,7 +7,36 @@
   </head>
   <body>
     <div id="app">
-      <canvas id="game-canvas" width="480" height="480"></canvas>
+      <div id="title-bar">
+        <span id="game-title">ERWIN'S SURVIVAL</span>
+        <div id="health-container">
+          <span id="health-label">Health:</span>
+          <div id="health-bar-bg">
+            <div id="health-bar"></div>
+          </div>
+          <span id="health-value">40</span>
+        </div>
+      </div>
+
+      <div id="game-area">
+        <canvas id="game-canvas" width="480" height="480"></canvas>
+
+        <div id="side-panel">
+          <div id="inventory-panel">
+            <h3>Inventory</h3>
+          </div>
+          <div id="tools-panel">
+            <h3>Available Tools</h3>
+          </div>
+          <div id="agent-log">
+            <h3>Agent Log</h3>
+          </div>
+        </div>
+      </div>
+
+      <div id="footer">
+        Use arrow keys or WASD to move. The AI agent acts via WebMCP tools. Find resources. Build a shelter.
+      </div>
     </div>
     <script type="module" src="/src/main.js"></script>
   </body>

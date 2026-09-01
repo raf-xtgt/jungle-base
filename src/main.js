@@ -6,20 +6,9 @@ import { loadTileImages, renderMap, renderFog, renderPlayer, renderGameOver } fr
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
 import { addItem, removeItem, hasItems } from './js/inventory.js'
+import { updateHealthBar, updateInventory, updateToolList, addLogEntry } from './js/ui.js'
 
 console.log('Erwin is alive');
-
-// Inventory verification
-addItem(gameState, "water", 2);
-console.log('water after add 2:', gameState.inventory.water);
-console.log('hasItems water:3 =', hasItems(gameState, { water: 3 }));
-console.log('hasItems water:1 =', hasItems(gameState, { water: 1 }));
-console.log('removeItem water 5 =', removeItem(gameState, "water", 5));
-console.log('water after failed remove:', gameState.inventory.water);
-console.log('removeItem water 1 =', removeItem(gameState, "water", 1));
-console.log('water after remove 1:', gameState.inventory.water);
-// Reset water back to 0 for game start
-gameState.inventory.water = 0;
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -33,15 +22,24 @@ loadTileImages(TILE_CONFIG).then((images) => {
     renderPlayer(ctx, gameState.position);
   }
 
+  function refreshUI() {
+    updateHealthBar(gameState.health, gameState.maxHealth);
+    updateInventory(gameState.inventory);
+    updateToolList(gameState.registeredTools);
+  }
+
   updateExploredTiles(gameState);
   redraw();
+  refreshUI();
 
   setupKeyboardInput(gameState, () => {
     updateExploredTiles(gameState);
     redraw();
+    refreshUI();
   });
 
   let loopId = startGameLoop(gameState, () => {
+    refreshUI();
     if (gameState.gameOver) {
       stopGameLoop(loopId);
       redraw();
