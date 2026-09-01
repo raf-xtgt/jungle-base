@@ -42,3 +42,16 @@ export function renderMap(ctx, grid, tileImages, tileConfig) {
     }
   }
 }
+
+export function renderPlayer(ctx, position) {
+  const px = position.x * TILE_PX + 4;
+  const py = position.y * TILE_PX + 4;
+  const size = 24;
+
+  ctx.fillStyle = "#f5c542";
+  ctx.fillRect(px, py, size, size);
+
+  ctx.strokeStyle = "#b8860b";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(px, py, size, size);
+}
