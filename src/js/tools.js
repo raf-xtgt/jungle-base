@@ -5,14 +5,12 @@ import { addItem, removeItem, hasItems } from './inventory.js'
 export const toolHandlers = {};
 
 export function getModelContext() {
-  const ctx = navigator.modelContext ?? document.modelContext ?? null;
+  const ctx = document.modelContext ?? navigator.modelContext ?? null;
   if (!ctx) {
     console.warn('WebMCP not available. Use ?debug=true for the debug panel.');
   }
   return ctx;
 }
-
-export const isWebMCPAvailable = !!(navigator.modelContext ?? document.modelContext);
 
 function getNearbyNodes(gameState, resourceRegistry) {
   const px = gameState.position.x;
@@ -43,14 +41,18 @@ export function registerInfoTool(modelContext, gameState, resourceRegistry) {
   if (modelContext) {
     modelContext.registerTool({
       name: 'get_game_state',
-      title: 'Get Game State',
       description: "Read Erwin's current health, inventory, position, nearby resource nodes, and registered tools. Use this to decide what to do next.",
       inputSchema: { type: 'object', properties: {} },
       annotations: { readOnlyHint: true },
-      execute: handler
+      execute: async (input, { signal } = {}) => {
+        const state = await handler();
+        return JSON.stringify(state);
+      }
     });
   }
 }
+
+const craftAbortControllers = {};
 
 export function registerCraftTools(modelContext, gameState, craftRegistry, onToolCall) {
   for (const entry of craftRegistry) {
@@ -90,18 +92,24 @@ export function registerCraftTools(modelContext, gameState, craftRegistry, onToo
     gameState.registeredTools.add(entry.name);
 
     if (modelContext) {
+      const controller = new AbortController();
+      craftAbortControllers[entry.name] = controller;
+
       modelContext.registerTool({
         name: entry.name,
-        title: entry.title,
         description: entry.description,
         inputSchema: { type: 'object', properties: {} },
         annotations: { readOnlyHint: false },
-        execute: handler
-      });
+        execute: async (input, { signal } = {}) => {
+          const result = await handler();
+          return JSON.stringify(result);
+        }
+      }, { signal: controller.signal });
     }
   }
 }
 
+const resourceAbortControllers = {};
 const activeResourceTools = new Set();
 
 export function updateResourceTools(modelContext, gameState, resourceRegistry, onToolCall, grid) {
@@ -138,8 +146,9 @@ export function updateResourceTools(modelContext, gameState, resourceRegistry, o
           if (grid) {
             grid[node.position.y][node.position.x] = 'depleted';
           }
-          if (modelContext) {
-            try { modelContext.unregisterTool(toolName); } catch (e) {}
+          if (modelContext && resourceAbortControllers[node.id]) {
+            resourceAbortControllers[node.id].abort();
+            delete resourceAbortControllers[node.id];
           }
         }
 
@@ -152,14 +161,19 @@ export function updateResourceTools(modelContext, gameState, resourceRegistry, o
       gameState.registeredTools.add(toolName);
 
       if (modelContext) {
+        const controller = new AbortController();
+        resourceAbortControllers[node.id] = controller;
+
         modelContext.registerTool({
           name: toolName,
-          title: node.tool.title,
           description: node.tool.description + ` (${node.supply} uses left)`,
           inputSchema: { type: 'object', properties: {} },
           annotations: { readOnlyHint: false },
-          execute: handler
-        });
+          execute: async (input, { signal } = {}) => {
+            const result = await handler();
+            return JSON.stringify(result);
+          }
+        }, { signal: controller.signal });
       }
 
     } else if (!inRange && isRegistered) {
@@ -167,8 +181,9 @@ export function updateResourceTools(modelContext, gameState, resourceRegistry, o
       gameState.registeredTools.delete(toolName);
       delete toolHandlers[toolName];
 
-      if (modelContext) {
-        try { modelContext.unregisterTool(toolName); } catch (e) {}
+      if (modelContext && resourceAbortControllers[node.id]) {
+        resourceAbortControllers[node.id].abort();
+        delete resourceAbortControllers[node.id];
       }
     }
   }
@@ -181,8 +196,9 @@ export function clearAllResourceTools(modelContext, gameState, resourceRegistry)
       activeResourceTools.delete(node.id);
       gameState.registeredTools.delete(toolName);
       delete toolHandlers[toolName];
-      if (modelContext) {
-        try { modelContext.unregisterTool(toolName); } catch (e) {}
+      if (modelContext && resourceAbortControllers[node.id]) {
+        resourceAbortControllers[node.id].abort();
+        delete resourceAbortControllers[node.id];
       }
     }
   }

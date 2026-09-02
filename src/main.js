@@ -10,8 +10,8 @@ import { getModelContext, registerInfoTool, registerCraftTools, updateResourceTo
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
-const modelContext = getModelContext();
 
+let modelContext = null;
 let grid = null;
 let tileImages = null;
 let loopId = null;
@@ -97,6 +97,8 @@ function initGame() {
 loadTileImages(TILE_CONFIG).then((images) => {
   tileImages = images;
   grid = buildMapGrid(RESOURCE_REGISTRY);
+  modelContext = getModelContext();
+  console.log('modelContext:', modelContext);
 
   renderStartScreen(ctx);
 
