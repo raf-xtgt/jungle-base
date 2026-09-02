@@ -22,17 +22,31 @@ function getNearbyNodes(gameState, resourceRegistry) {
 
 export function registerInfoTool(modelContext, gameState, resourceRegistry) {
   const handler = async () => {
-    return {
+    const state = {
+      phase: gameState.phase,
+      dayCount: gameState.dayCount,
       health: gameState.health,
       maxHealth: gameState.maxHealth,
       inventory: { ...gameState.inventory },
       position: { ...gameState.position },
+      baseBuilt: gameState.baseBuilt,
+      baseHealth: gameState.baseHealth,
+      defenses: gameState.defenses.map(d => ({ ...d })),
+      facingDirection: gameState.facingDirection,
       nearbyNodes: getNearbyNodes(gameState, resourceRegistry),
       registeredTools: [...gameState.registeredTools],
       elapsedTime: gameState.elapsedTime,
       gameOver: gameState.gameOver,
       gameWon: gameState.gameWon
     };
+    if (gameState.phase === 'dusk') {
+      state.planningTimeRemaining = gameState.planningTimer;
+    }
+    if (gameState.phase === 'night') {
+      state.currentWave = gameState.currentWaveIndex + 1;
+      state.wavesTotal = gameState.waves.length;
+    }
+    return state;
   };
 
   toolHandlers['get_game_state'] = handler;

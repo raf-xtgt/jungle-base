@@ -1,12 +1,12 @@
 import './style.css'
 import { gameState, resetGameState } from './js/state.js'
-import { RESOURCE_REGISTRY, CRAFT_REGISTRY } from './js/registry.js'
+import { RESOURCE_REGISTRY } from './js/registry.js'
 import { buildMapGrid, TILE_CONFIG, GRID_SIZE } from './js/map.js'
 import { loadTileImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses } from './js/renderer.js'
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
-import { updateHealthBar, updateInventory, updateToolList, addLogEntry, setupDebugPanel, updateDebugButtons, updatePhaseIndicator, showPlanningModal, hidePlanningModal, updatePlanningTimer } from './js/ui.js'
-import { getModelContext, registerInfoTool, registerCraftTools, updateResourceTools, clearAllResourceTools, registerDefenseTools, unregisterDefenseTools, toolHandlers } from './js/tools.js'
+import { updateHealthBar, updateInventory, updateToolList, addLogEntry, setupDebugPanel, updateDebugButtons, updatePhaseIndicator, showPlanningModal, hidePlanningModal, updatePlanningTimer, updateFooter } from './js/ui.js'
+import { getModelContext, registerInfoTool, clearAllResourceTools, registerDefenseTools, unregisterDefenseTools, toolHandlers } from './js/tools.js'
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -31,6 +31,13 @@ function refreshUI() {
   updateInventory(gameState.inventory);
   updateToolList(gameState.registeredTools);
   updatePhaseIndicator(gameState.phase, gameState.dayCount);
+  updateFooter(gameState);
+}
+
+function onPlayerAction(message, tip) {
+  if (message) addLogEntry(message, tip);
+  refreshUI();
+  redraw();
 }
 
 function onToolCall(toolName, result, tip) {
@@ -130,12 +137,10 @@ function initGame() {
   grid = buildMapGrid(RESOURCE_REGISTRY);
 
   registerInfoTool(modelContext, gameState, RESOURCE_REGISTRY);
-  registerCraftTools(modelContext, gameState, CRAFT_REGISTRY, onToolCall);
 
   const debugPhase = applyDebugPhaseShortcut();
 
   updateExploredTiles(gameState);
-  updateResourceTools(modelContext, gameState, RESOURCE_REGISTRY, onToolCall, grid);
   redraw();
   refreshUI();
   updateDebugButtons(toolHandlers, refreshUI, redraw);
@@ -164,6 +169,8 @@ function initGame() {
         redraw();
         renderGameOver(ctx, true);
       }
+    }, () => {
+      startDuskPhase();
     });
   }
 
@@ -180,12 +187,16 @@ loadTileImages(TILE_CONFIG).then((images) => {
 
   setupDebugPanel(toolHandlers, refreshUI, redraw);
 
-  setupKeyboardInput(gameState, () => {
-    updateExploredTiles(gameState);
-    updateResourceTools(modelContext, gameState, RESOURCE_REGISTRY, onToolCall, grid);
-    redraw();
-    refreshUI();
-    updateDebugButtons(toolHandlers, refreshUI, redraw);
+  setupKeyboardInput(gameState, {
+    onMove: () => {
+      updateExploredTiles(gameState);
+      redraw();
+      refreshUI();
+      updateDebugButtons(toolHandlers, refreshUI, redraw);
+    },
+    onAction: onPlayerAction,
+    resourceRegistry: RESOURCE_REGISTRY,
+    getGrid: () => grid
   });
 
   window.addEventListener('keydown', (e) => {

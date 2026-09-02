@@ -59,6 +59,27 @@ export function addLogEntry(message, tip) {
   log.scrollTop = log.scrollHeight;
 }
 
+export function updateFooter(gameState) {
+  const el = document.getElementById('footer');
+  if (!el) return;
+
+  if (gameState.phase === 'morning') {
+    if (!gameState.baseBuilt) {
+      el.textContent = 'WASD: Move | R: Interact | E: Heal';
+    } else if (gameState.duskCountdown > 0) {
+      el.textContent = `WASD: Move | R: Collect | E: Heal | Dusk in: ${gameState.duskCountdown}s`;
+    } else if (gameState.morningTimer > 0) {
+      el.textContent = `WASD: Move | R: Collect | E: Heal | Dusk in: ${gameState.morningTimer}s`;
+    } else {
+      el.textContent = 'WASD: Move | R: Collect | E: Heal';
+    }
+  } else if (gameState.phase === 'dusk') {
+    el.textContent = `Planning phase. Use your AI agent to plan defenses. Time: ${gameState.planningTimer}s`;
+  } else if (gameState.phase === 'night') {
+    el.textContent = 'Arrows: Face | SPACE: Shoot | R: Repair';
+  }
+}
+
 const MONSTER_COUNTS = { 1: 4, 2: 6, 3: 8 };
 
 export function showPlanningModal(gameState) {

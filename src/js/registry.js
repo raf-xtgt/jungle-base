@@ -139,7 +139,7 @@ export const RESOURCE_REGISTRY = [
   {
     id: "vine_1",
     type: "vine",
-    position: { x: 6, y: 9 },
+    position: { x: 6, y: 10 },
     supply: 3,
     tileFile: "rpgTile161.png",
     depletedTileFile: "rpgTile004.png",
