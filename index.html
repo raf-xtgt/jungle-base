@@ -9,6 +9,7 @@
     <div id="app">
       <div id="title-bar">
         <span id="game-title">ERWIN'S SURVIVAL</span>
+        <span id="phase-indicator">MORNING — Day 1</span>
         <div id="health-container">
           <span id="health-label">Health:</span>
           <div id="health-bar-bg">
@@ -20,6 +21,15 @@
 
       <div id="game-area">
         <canvas id="game-canvas" width="480" height="480"></canvas>
+
+        <div id="planning-modal" style="display: none;">
+          <h2>NIGHT DEFENSE PLANNING</h2>
+          <div id="planning-timer-row">Time: <span id="planning-timer">90</span>s</div>
+          <div id="planning-threat"></div>
+          <div id="planning-inventory"></div>
+          <div id="planning-defenses"></div>
+          <p class="planning-hint">Tell your AI agent to call get_planning_context, then plan your defenses.</p>
+        </div>
 
         <div id="side-panel">
           <div id="inventory-panel">

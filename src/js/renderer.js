@@ -54,6 +54,56 @@ export function renderFog(ctx, exploredTiles, gridSize) {
   }
 }
 
+export function renderBase(ctx, baseBuilt) {
+  if (!baseBuilt) return;
+  for (let by = 6; by <= 8; by++) {
+    for (let bx = 6; bx <= 8; bx++) {
+      ctx.fillStyle = "#8B4513";
+      ctx.fillRect(bx * TILE_PX, by * TILE_PX, TILE_PX, TILE_PX);
+      ctx.strokeStyle = "#5C2D0E";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx * TILE_PX, by * TILE_PX, TILE_PX, TILE_PX);
+    }
+  }
+  ctx.fillStyle = "#e0e0e0";
+  ctx.font = "bold 14px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("B", 7 * TILE_PX + TILE_PX / 2, 7 * TILE_PX + TILE_PX / 2);
+}
+
+const DEFENSE_POSITIONS = {
+  north: { x: 7, y: 5 },
+  south: { x: 7, y: 9 },
+  west:  { x: 5, y: 7 },
+  east:  { x: 9, y: 7 }
+};
+
+const DEFENSE_COLORS = {
+  spike_trap: { fill: "#8B0000", label: "S" },
+  barricade:  { fill: "#654321", label: "W" },
+  fire:       { fill: "#FF6600", label: "F" }
+};
+
+export function renderDefenses(ctx, defenses) {
+  for (const def of defenses) {
+    const pos = DEFENSE_POSITIONS[def.side];
+    if (!pos) continue;
+    const colors = DEFENSE_COLORS[def.type];
+    if (!colors) continue;
+    ctx.fillStyle = colors.fill;
+    ctx.fillRect(pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
+    ctx.fillStyle = "#e0e0e0";
+    ctx.font = "bold 12px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(colors.label, pos.x * TILE_PX + TILE_PX / 2, pos.y * TILE_PX + TILE_PX / 2);
+  }
+}
+
 export function renderPlayer(ctx, position) {
   const px = position.x * TILE_PX + 4;
   const py = position.y * TILE_PX + 4;

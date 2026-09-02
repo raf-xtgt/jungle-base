@@ -189,6 +189,195 @@ export function updateResourceTools(modelContext, gameState, resourceRegistry, o
   }
 }
 
+const DEFENSE_COSTS = {
+  spike_trap: { wood: 2, stone: 1 },
+  barricade: { wood: 3 },
+  fire: { wood: 1, herbs: 1 }
+};
+
+const MONSTER_COUNTS = { 1: 4, 2: 6, 3: 8 };
+const SIDES_COUNTS = { 1: 2, 2: 3, 3: 4 };
+
+const defenseAbortControllers = {};
+const DEFENSE_TOOL_NAMES = ['get_planning_context', 'place_spike_trap', 'build_barricade', 'set_fire'];
+
+export function registerDefenseTools(modelContext, gameState, onToolCall) {
+  const sideSchema = {
+    type: 'object',
+    properties: {
+      side: { type: 'string', enum: ['north', 'south', 'east', 'west'], description: 'Which side of the base to place the defense' }
+    },
+    required: ['side']
+  };
+
+  // get_planning_context
+  const planningHandler = async () => {
+    if (gameState.phase !== 'dusk') {
+      return { error: 'This tool is only available during the planning phase.' };
+    }
+    const nightNum = gameState.dayCount;
+    const result = {
+      nightNumber: nightNum,
+      expectedMonsters: MONSTER_COUNTS[nightNum] || 8,
+      expectedSides: SIDES_COUNTS[nightNum] || 4,
+      inventory: { ...gameState.inventory },
+      defenses: gameState.defenses.map(d => ({ ...d })),
+      baseHealth: gameState.baseHealth,
+      maxBaseHealth: gameState.maxBaseHealth,
+      planningTimeRemaining: gameState.planningTimer,
+      availableDefenses: [
+        { tool: 'place_spike_trap', cost: { wood: 2, stone: 1 }, effect: 'Kills up to 2 monsters. Destroyed after use.' },
+        { tool: 'build_barricade', cost: { wood: 3 }, effect: 'Blocks monsters. 3 durability. Survives across nights.' },
+        { tool: 'set_fire', cost: { wood: 1, herbs: 1 }, effect: 'Kills 1 monster per wave. Lasts 1 night.' }
+      ]
+    };
+    onToolCall('get_planning_context', result, null);
+    return result;
+  };
+  toolHandlers['get_planning_context'] = planningHandler;
+  gameState.registeredTools.add('get_planning_context');
+
+  if (modelContext) {
+    const ctrl = new AbortController();
+    defenseAbortControllers['get_planning_context'] = ctrl;
+    modelContext.registerTool({
+      name: 'get_planning_context',
+      description: 'Read the current defense planning context. Returns inventory, existing defenses, base health, expected monsters, and available defense options. Call this first to understand the situation before placing defenses.',
+      inputSchema: { type: 'object', properties: {} },
+      annotations: { readOnlyHint: true },
+      execute: async () => JSON.stringify(await planningHandler())
+    }, { signal: ctrl.signal });
+  }
+
+  // place_spike_trap
+  const spikeHandler = async (input) => {
+    if (gameState.phase !== 'dusk') {
+      return { error: 'This tool is only available during the planning phase.' };
+    }
+    const side = input?.side;
+    if (!['north', 'south', 'east', 'west'].includes(side)) {
+      return { error: 'Invalid side. Use north, south, east, or west.' };
+    }
+    if (gameState.defenses.some(d => d.type === 'spike_trap' && d.side === side)) {
+      return { error: `A spike trap already exists on the ${side} side.` };
+    }
+    const cost = DEFENSE_COSTS.spike_trap;
+    if (!hasItems(gameState, cost)) {
+      return { error: 'Not enough items', required: cost, current: { ...gameState.inventory } };
+    }
+    for (const [item, amount] of Object.entries(cost)) {
+      removeItem(gameState, item, amount);
+    }
+    gameState.defenses.push({ type: 'spike_trap', side, durability: 1 });
+    const result = { success: true, defense: 'spike_trap', side, inventory: { ...gameState.inventory } };
+    onToolCall('place_spike_trap', result, 'Sharp stakes in the ground. Wolves will not see them in the dark.');
+    return result;
+  };
+  toolHandlers['place_spike_trap'] = spikeHandler;
+  gameState.registeredTools.add('place_spike_trap');
+
+  if (modelContext) {
+    const ctrl = new AbortController();
+    defenseAbortControllers['place_spike_trap'] = ctrl;
+    modelContext.registerTool({
+      name: 'place_spike_trap',
+      description: 'Place a spike trap on one side of the base. Costs 2 wood and 1 stone. Kills up to 2 monsters on that side, then destroyed. One spike trap per side.',
+      inputSchema: sideSchema,
+      annotations: { readOnlyHint: false },
+      execute: async (input) => JSON.stringify(await spikeHandler(input))
+    }, { signal: ctrl.signal });
+  }
+
+  // build_barricade
+  const barricadeHandler = async (input) => {
+    if (gameState.phase !== 'dusk') {
+      return { error: 'This tool is only available during the planning phase.' };
+    }
+    const side = input?.side;
+    if (!['north', 'south', 'east', 'west'].includes(side)) {
+      return { error: 'Invalid side. Use north, south, east, or west.' };
+    }
+    if (gameState.defenses.some(d => d.type === 'barricade' && d.side === side)) {
+      return { error: `A barricade already exists on the ${side} side.` };
+    }
+    const cost = DEFENSE_COSTS.barricade;
+    if (!hasItems(gameState, cost)) {
+      return { error: 'Not enough items', required: cost, current: { ...gameState.inventory } };
+    }
+    for (const [item, amount] of Object.entries(cost)) {
+      removeItem(gameState, item, amount);
+    }
+    gameState.defenses.push({ type: 'barricade', side, durability: 3 });
+    const result = { success: true, defense: 'barricade', side, inventory: { ...gameState.inventory } };
+    onToolCall('build_barricade', result, 'Stacked logs make a wall. Not pretty, but strong.');
+    return result;
+  };
+  toolHandlers['build_barricade'] = barricadeHandler;
+  gameState.registeredTools.add('build_barricade');
+
+  if (modelContext) {
+    const ctrl = new AbortController();
+    defenseAbortControllers['build_barricade'] = ctrl;
+    modelContext.registerTool({
+      name: 'build_barricade',
+      description: 'Build a wood barricade on one side of the base. Costs 3 wood. Blocks monsters with 3 durability (loses 1 per block). Survives across nights if not destroyed. One barricade per side.',
+      inputSchema: sideSchema,
+      annotations: { readOnlyHint: false },
+      execute: async (input) => JSON.stringify(await barricadeHandler(input))
+    }, { signal: ctrl.signal });
+  }
+
+  // set_fire
+  const fireHandler = async (input) => {
+    if (gameState.phase !== 'dusk') {
+      return { error: 'This tool is only available during the planning phase.' };
+    }
+    const side = input?.side;
+    if (!['north', 'south', 'east', 'west'].includes(side)) {
+      return { error: 'Invalid side. Use north, south, east, or west.' };
+    }
+    if (gameState.defenses.some(d => d.type === 'fire' && d.side === side)) {
+      return { error: `A fire already exists on the ${side} side.` };
+    }
+    const cost = DEFENSE_COSTS.fire;
+    if (!hasItems(gameState, cost)) {
+      return { error: 'Not enough items', required: cost, current: { ...gameState.inventory } };
+    }
+    for (const [item, amount] of Object.entries(cost)) {
+      removeItem(gameState, item, amount);
+    }
+    gameState.defenses.push({ type: 'fire', side, durability: 1 });
+    const result = { success: true, defense: 'fire', side, inventory: { ...gameState.inventory } };
+    onToolCall('set_fire', result, 'Fire keeps predators away. Keep it burning through the night.');
+    return result;
+  };
+  toolHandlers['set_fire'] = fireHandler;
+  gameState.registeredTools.add('set_fire');
+
+  if (modelContext) {
+    const ctrl = new AbortController();
+    defenseAbortControllers['set_fire'] = ctrl;
+    modelContext.registerTool({
+      name: 'set_fire',
+      description: 'Set a defensive fire on one side of the base. Costs 1 wood and 1 herbs. Kills 1 monster per wave on this side. Lasts 1 night only. One fire per side.',
+      inputSchema: sideSchema,
+      annotations: { readOnlyHint: false },
+      execute: async (input) => JSON.stringify(await fireHandler(input))
+    }, { signal: ctrl.signal });
+  }
+}
+
+export function unregisterDefenseTools(modelContext, gameState) {
+  for (const name of DEFENSE_TOOL_NAMES) {
+    delete toolHandlers[name];
+    gameState.registeredTools.delete(name);
+    if (modelContext && defenseAbortControllers[name]) {
+      defenseAbortControllers[name].abort();
+      delete defenseAbortControllers[name];
+    }
+  }
+}
+
 export function clearAllResourceTools(modelContext, gameState, resourceRegistry) {
   for (const node of resourceRegistry) {
     const toolName = node.tool.name + '_' + node.id;

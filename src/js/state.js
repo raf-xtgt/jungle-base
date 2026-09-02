@@ -14,7 +14,21 @@ const DEFAULTS = {
   },
   elapsedTime: 0,
   gameOver: false,
-  gameWon: false
+  gameWon: false,
+  phase: "morning",
+  dayCount: 1,
+  baseBuilt: false,
+  baseHealth: 0,
+  maxBaseHealth: 20,
+  defenses: [],
+  facingDirection: "south",
+  morningTimer: 0,
+  planningTimer: 0,
+  duskCountdown: 0,
+  waves: [],
+  currentWaveIndex: 0,
+  waveActionTimer: 0,
+  nightArrowsShot: 0
 };
 
 export const gameState = {
@@ -26,7 +40,21 @@ export const gameState = {
   registeredTools: new Set(),
   elapsedTime: DEFAULTS.elapsedTime,
   gameOver: DEFAULTS.gameOver,
-  gameWon: DEFAULTS.gameWon
+  gameWon: DEFAULTS.gameWon,
+  phase: DEFAULTS.phase,
+  dayCount: DEFAULTS.dayCount,
+  baseBuilt: DEFAULTS.baseBuilt,
+  baseHealth: DEFAULTS.baseHealth,
+  maxBaseHealth: DEFAULTS.maxBaseHealth,
+  defenses: [...DEFAULTS.defenses],
+  facingDirection: DEFAULTS.facingDirection,
+  morningTimer: DEFAULTS.morningTimer,
+  planningTimer: DEFAULTS.planningTimer,
+  duskCountdown: DEFAULTS.duskCountdown,
+  waves: [...DEFAULTS.waves],
+  currentWaveIndex: DEFAULTS.currentWaveIndex,
+  waveActionTimer: DEFAULTS.waveActionTimer,
+  nightArrowsShot: DEFAULTS.nightArrowsShot
 };
 
 export function resetGameState() {
@@ -39,4 +67,18 @@ export function resetGameState() {
   gameState.elapsedTime = DEFAULTS.elapsedTime;
   gameState.gameOver = DEFAULTS.gameOver;
   gameState.gameWon = DEFAULTS.gameWon;
+  gameState.phase = DEFAULTS.phase;
+  gameState.dayCount = DEFAULTS.dayCount;
+  gameState.baseBuilt = DEFAULTS.baseBuilt;
+  gameState.baseHealth = DEFAULTS.baseHealth;
+  gameState.maxBaseHealth = DEFAULTS.maxBaseHealth;
+  gameState.defenses = [...DEFAULTS.defenses];
+  gameState.facingDirection = DEFAULTS.facingDirection;
+  gameState.morningTimer = DEFAULTS.morningTimer;
+  gameState.planningTimer = DEFAULTS.planningTimer;
+  gameState.duskCountdown = DEFAULTS.duskCountdown;
+  gameState.waves = [...DEFAULTS.waves];
+  gameState.currentWaveIndex = DEFAULTS.currentWaveIndex;
+  gameState.waveActionTimer = DEFAULTS.waveActionTimer;
+  gameState.nightArrowsShot = DEFAULTS.nightArrowsShot;
 }
