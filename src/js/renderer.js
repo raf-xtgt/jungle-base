@@ -104,7 +104,7 @@ export function renderDefenses(ctx, defenses) {
   }
 }
 
-export function renderPlayer(ctx, position) {
+export function renderPlayer(ctx, position, facingDirection) {
   const px = position.x * TILE_PX + 4;
   const py = position.y * TILE_PX + 4;
   const size = 24;
@@ -115,9 +115,72 @@ export function renderPlayer(ctx, position) {
   ctx.strokeStyle = "#b8860b";
   ctx.lineWidth = 2;
   ctx.strokeRect(px, py, size, size);
+
+  // Facing indicator (small triangle)
+  const cx = position.x * TILE_PX + TILE_PX / 2;
+  const cy = position.y * TILE_PX + TILE_PX / 2;
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  if (facingDirection === 'north') {
+    ctx.moveTo(cx, cy - 10); ctx.lineTo(cx - 4, cy - 4); ctx.lineTo(cx + 4, cy - 4);
+  } else if (facingDirection === 'south') {
+    ctx.moveTo(cx, cy + 10); ctx.lineTo(cx - 4, cy + 4); ctx.lineTo(cx + 4, cy + 4);
+  } else if (facingDirection === 'west') {
+    ctx.moveTo(cx - 10, cy); ctx.lineTo(cx - 4, cy - 4); ctx.lineTo(cx - 4, cy + 4);
+  } else if (facingDirection === 'east') {
+    ctx.moveTo(cx + 10, cy); ctx.lineTo(cx + 4, cy - 4); ctx.lineTo(cx + 4, cy + 4);
+  }
+  ctx.closePath();
+  ctx.fill();
 }
 
-export function renderGameOver(ctx, won) {
+export function renderNightOverlay(ctx) {
+  ctx.fillStyle = "rgba(0, 0, 40, 0.4)";
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
+export function renderDuskOverlay(ctx) {
+  ctx.fillStyle = "rgba(255, 140, 0, 0.15)";
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+}
+
+export function renderWaveText(ctx, text) {
+  const w = ctx.canvas.width;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.font = "bold 16px monospace";
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(0, 0, w, 28);
+  ctx.fillStyle = "#ef4444";
+  ctx.fillText(text, w / 2, 6);
+}
+
+const WOLF_POSITIONS = {
+  north: [{ x: 6, y: 0 }, { x: 8, y: 0 }],
+  south: [{ x: 6, y: 14 }, { x: 8, y: 14 }],
+  west:  [{ x: 0, y: 6 }, { x: 0, y: 8 }],
+  east:  [{ x: 14, y: 6 }, { x: 14, y: 8 }]
+};
+
+export function renderWolves(ctx, side, count, dead) {
+  const positions = WOLF_POSITIONS[side];
+  if (!positions) return;
+  for (let i = 0; i < Math.min(count, positions.length); i++) {
+    const p = positions[i];
+    ctx.fillStyle = dead ? "#555" : "#8B4513";
+    ctx.fillRect(p.x * TILE_PX + 4, p.y * TILE_PX + 4, 24, 24);
+    ctx.strokeStyle = dead ? "#333" : "#5C2D0E";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(p.x * TILE_PX + 4, p.y * TILE_PX + 4, 24, 24);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 10px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(dead ? "X" : "W", p.x * TILE_PX + TILE_PX / 2, p.y * TILE_PX + TILE_PX / 2);
+  }
+}
+
+export function renderGameOver(ctx, won, gameState) {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
 
@@ -129,11 +192,24 @@ export function renderGameOver(ctx, won) {
 
   ctx.font = "bold 28px monospace";
   ctx.fillStyle = won ? "#4ade80" : "#ef4444";
-  ctx.fillText(won ? "ERWIN SURVIVED!" : "ERWIN DIDN'T MAKE IT", w / 2, h / 2 - 30);
+
+  let title, subtitle;
+  if (won) {
+    title = "RESCUE ARRIVED!";
+    subtitle = "You survived 3 nights in the jungle.";
+  } else if (gameState && gameState.baseBuilt && gameState.baseHealth <= 0) {
+    title = "THE BASE IS DESTROYED";
+    subtitle = `Erwin did not make it through night ${gameState.dayCount}.`;
+  } else {
+    title = "ERWIN DIDN'T MAKE IT";
+    subtitle = "He could not survive without a shelter.";
+  }
+
+  ctx.fillText(title, w / 2, h / 2 - 30);
 
   ctx.font = "16px monospace";
   ctx.fillStyle = "#e0e0e0";
-  ctx.fillText(won ? "The shelter is built. He will survive the night." : "He could not hold on. The jungle won.", w / 2, h / 2 + 10);
+  ctx.fillText(subtitle, w / 2, h / 2 + 10);
 
   ctx.font = "14px monospace";
   ctx.fillStyle = "#facc15";
