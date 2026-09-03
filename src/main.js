@@ -6,7 +6,7 @@ import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, r
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
 import { updateHealthBar, updateInventory, updateToolList, addLogEntry, setupDebugPanel, updateDebugButtons, updatePhaseIndicator, showPlanningModal, hidePlanningModal, updatePlanningTimer, updateFooter } from './js/ui.js'
-import { getModelContext, registerInfoTool, clearAllResourceTools, registerDefenseTools, unregisterDefenseTools, toolHandlers } from './js/tools.js'
+import { getModelContext, registerInfoTool, registerDefenseTools, unregisterDefenseTools, toolHandlers } from './js/tools.js'
 import { generateWaves, resolveWave, buildWaveSlimes } from './js/monsters.js'
 
 const canvas = document.getElementById('game-canvas');
@@ -497,7 +497,6 @@ function initGame() {
   stopWalkAnimation();
   nightWaveState = null;
 
-  clearAllResourceTools(modelContext, gameState, RESOURCE_REGISTRY);
   for (const key of Object.keys(toolHandlers)) {
     delete toolHandlers[key];
   }

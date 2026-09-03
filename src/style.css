@@ -17,17 +17,23 @@ body {
 #app {
   display: flex;
   flex-direction: column;
-  width: auto;
   /* The canvas is 480x480 internally and is only ever scaled on screen, so
      no game coordinate changes. Show it as large as the window allows, up to
      1.5x, and shrink to fit rather than making the judge zoom the browser. */
-  --game-size: min(720px, calc(100vh - 140px), calc(100vw - 360px));
+  --panel-width: 340px;
+  --game-size: min(720px, calc(100vh - 140px), calc(100vw - var(--panel-width) - 40px));
+  /* Pin the total width. The window must not jump when a log line arrives or
+     an inventory number gains a digit. */
+  width: calc(var(--game-size) + var(--panel-width));
 }
 
 #title-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+  overflow: hidden;
+  white-space: nowrap;
   padding: 14px 18px;
   background: #16213e;
   border-bottom: 2px solid #0f3460;
@@ -96,12 +102,15 @@ body {
 }
 
 #side-panel {
-  flex: 1;
-  min-width: 340px;
+  /* Fixed, never sized by its content. */
+  flex: 0 0 var(--panel-width);
+  width: var(--panel-width);
+  min-width: 0;
   background: #222;
   display: flex;
   flex-direction: column;
   border-left: 2px solid #0f3460;
+  overflow: hidden;
 }
 
 #side-panel h3 {
@@ -126,9 +135,11 @@ body {
   border-top: 1px solid #333;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: 300px;
   font-family: 'Courier New', monospace;
   font-size: 16px;
+  overflow-wrap: anywhere;
 }
 
 #footer {
@@ -143,8 +154,10 @@ body {
 .inv-row {
   display: flex;
   justify-content: space-between;
+  gap: 8px;
   padding: 3px 14px;
   font-size: 17px;
+  min-width: 0;
 }
 
 .tool-row {
@@ -152,6 +165,7 @@ body {
   font-size: 16px;
   color: #4ade80;
   font-family: 'Courier New', monospace;
+  overflow-wrap: anywhere;
 }
 
 .tool-row.empty {

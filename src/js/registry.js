@@ -1,4 +1,4 @@
-// registry.js — RESOURCE_REGISTRY and CRAFT_REGISTRY data
+// registry.js — RESOURCE_REGISTRY data
 
 export const RESOURCE_REGISTRY = [
   {
@@ -247,48 +247,5 @@ export const RESOURCE_REGISTRY = [
       yield: { item: "rope", amount: 1 },
       tip: "Twist the fibre while it is still damp. Dry fibre snaps."
     }
-  }
-];
-
-export const CRAFT_REGISTRY = [
-  {
-    name: "eat_food",
-    title: "Eat Food",
-    description: "Eat berries to restore 10 health. Needs at least 1 berries in inventory.",
-    requires: { berries: 1 },
-    consumes: { berries: 1 },
-    healthChange: 10,
-    triggersWin: false,
-    tip: "Eat small amounts often. A full stomach in the wild slows you down."
-  },
-  {
-    name: "drink_water",
-    title: "Drink Water",
-    description: "Drink water to restore 8 health. Needs at least 1 water in inventory.",
-    requires: { water: 1 },
-    consumes: { water: 1 },
-    healthChange: 8,
-    triggersWin: false,
-    tip: "Drink before you feel thirsty. Thirst means you are already dehydrated."
-  },
-  {
-    name: "make_medicine",
-    title: "Make Medicine",
-    description: "Crush herbs with water to make medicine. Restores 25 health. Needs 2 herbs and 1 water.",
-    requires: { herbs: 2, water: 1 },
-    consumes: { herbs: 2, water: 1 },
-    healthChange: 25,
-    triggersWin: false,
-    tip: "Boiled herbs lose some strength. Crush them raw for a stronger remedy."
-  },
-  {
-    name: "craft_shelter",
-    title: "Craft Shelter",
-    description: "Build a shelter to survive the night. Needs 5 wood, 3 stone, and 2 rope. This wins the game.",
-    requires: { wood: 5, stone: 3, rope: 2 },
-    consumes: { wood: 5, stone: 3, rope: 2 },
-    healthChange: 0,
-    triggersWin: true,
-    tip: "A shelter facing away from the wind stays warmer at night."
   }
 ];
