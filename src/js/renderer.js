@@ -20,6 +20,7 @@ export function loadSpriteImages() {
     arrow_east: '/assets/sprites/arrow_east.png',
     arrow_west: '/assets/sprites/arrow_west.png',
     crash_plane: '/assets/tiles/crash_plane.png',
+    base_cabin: '/assets/tiles/base_cabin.png',
     fire_defense: '/assets/tiles/fire.png',
     spike_trap_h: '/assets/sprites/spike_trap_h.png',
     spike_trap_v: '/assets/sprites/spike_trap_v.png',
@@ -143,9 +144,22 @@ export function renderFog(ctx, exploredTiles, gridSize) {
   }
 }
 
+// The base is a log cabin. It is 96 wide, which is exactly the 3x3 base area,
+// and taller than that, so the roof hangs over the row above.
+const CABIN_W = 96;
+const CABIN_H = 105;
+
 export function renderBase(ctx, baseBuilt) {
   if (!baseBuilt) return;
 
+  const cabin = spriteImages.base_cabin;
+  if (cabin) {
+    // Stand the cabin on the bottom edge of the base area.
+    ctx.drawImage(cabin, 6 * TILE_PX, 9 * TILE_PX - CABIN_H, CABIN_W, CABIN_H);
+    return;
+  }
+
+  // No sprite: fall back to the plain brown box.
   for (let by = 6; by <= 8; by++) {
     for (let bx = 6; bx <= 8; bx++) {
       ctx.fillStyle = "#8B4513";
