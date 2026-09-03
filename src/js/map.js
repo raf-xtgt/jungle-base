@@ -3,15 +3,15 @@
 export const GRID_SIZE = 15;
 
 export const TILE_CONFIG = {
-  grass:      { file: "rpgTile004.png", fallback: "#4a7c59" },
-  water:      { file: "rpgTile010.png", fallback: "#3d85c6" },
-  tree:       { file: "rpgTile155.png", fallback: "#2d5a1e" },
-  stone:      { file: "rpgTile131.png", fallback: "#808080" },
-  berry:      { file: "rpgTile157.png", fallback: "#c44569" },
-  vine:       { file: "rpgTile161.png", fallback: "#6a8d3e" },
-  herb:       { file: "rpgTile159.png", fallback: "#7ec850" },
-  crash_site: { file: "rpgTile144.png", fallback: "#cc6633" },
-  depleted:   { file: "rpgTile004.png", fallback: "#4a7c59" }
+  grass:      { file: "grass_new.png", fallback: "#4a7c59" },
+  water:      { file: "water_new.png", fallback: "#3d85c6" },
+  tree:       { file: "tree_new.png", fallback: "#2d5a1e" },
+  stone:      { file: "stone_new.png", fallback: "#808080" },
+  berry:      { file: "bush_brown.png", fallback: "#c44569" },
+  vine:       { file: "vine_plant.png", fallback: "#6a8d3e" },
+  herb:       { file: "bush_green.png", fallback: "#7ec850" },
+  crash_site: { file: "bench.png", fallback: "#cc6633" },
+  depleted:   { file: "stump.png", fallback: "#4a7c59" }
 };
 
 export function buildMapGrid(resourceRegistry) {

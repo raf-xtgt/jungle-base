@@ -2,7 +2,7 @@ import './style.css'
 import { gameState, resetGameState } from './js/state.js'
 import { RESOURCE_REGISTRY } from './js/registry.js'
 import { buildMapGrid, TILE_CONFIG, GRID_SIZE } from './js/map.js'
-import { loadTileImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves } from './js/renderer.js'
+import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves } from './js/renderer.js'
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
 import { updateHealthBar, updateInventory, updateToolList, addLogEntry, setupDebugPanel, updateDebugButtons, updatePhaseIndicator, showPlanningModal, hidePlanningModal, updatePlanningTimer, updateFooter } from './js/ui.js'
@@ -320,7 +320,7 @@ function initGame() {
   gameStarted = true;
 }
 
-loadTileImages(TILE_CONFIG).then((images) => {
+Promise.all([loadTileImages(TILE_CONFIG), loadSpriteImages()]).then(([images]) => {
   tileImages = images;
   grid = buildMapGrid(RESOURCE_REGISTRY);
   modelContext = getModelContext();

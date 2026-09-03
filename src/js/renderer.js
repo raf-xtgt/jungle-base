@@ -1,5 +1,31 @@
 // renderer.js — canvas drawing, sprites, tiles
 
+const spriteImages = {};
+
+export function loadSpriteImages() {
+  const sprites = {
+    erwin_south: '/assets/sprites/erwin_south.png',
+    erwin_north: '/assets/sprites/erwin_north.png',
+    erwin_west: '/assets/sprites/erwin_west.png',
+    erwin_east: '/assets/sprites/erwin_east.png',
+    wolf_idle: '/assets/sprites/wolf_idle.png',
+    wolf_die: '/assets/sprites/wolf_die.png',
+    fire_defense: '/assets/tiles/fire.png',
+    barricade_defense: '/assets/tiles/barricade_rock.png'
+  };
+
+  const promises = Object.entries(sprites).map(([key, src]) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { spriteImages[key] = img; resolve(); };
+      img.onerror = () => { spriteImages[key] = null; resolve(); };
+      img.src = src;
+    });
+  });
+
+  return Promise.all(promises);
+}
+
 export function loadTileImages(tileConfig) {
   const entries = Object.entries(tileConfig);
   const images = {};
@@ -26,18 +52,30 @@ const TILE_PX = 32;
 
 export function renderMap(ctx, grid, tileImages, tileConfig) {
   ctx.imageSmoothingEnabled = false;
+  const grassImg = tileImages['grass'];
 
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[y].length; x++) {
-      const type = grid[y][x];
-      const img = tileImages[type];
+      // Draw grass underneath every tile (handles transparent backgrounds)
+      if (grassImg) {
+        ctx.drawImage(grassImg, x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
+      } else {
+        ctx.fillStyle = tileConfig.grass.fallback;
+        ctx.fillRect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
+      }
 
+      const type = grid[y][x];
+      if (type === 'grass') continue;
+
+      const img = tileImages[type];
       if (img) {
         ctx.drawImage(img, x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
       } else {
         const config = tileConfig[type];
-        ctx.fillStyle = config ? config.fallback : "#000000";
-        ctx.fillRect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
+        if (config) {
+          ctx.fillStyle = config.fallback;
+          ctx.fillRect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
+        }
       }
     }
   }
@@ -85,53 +123,53 @@ const DEFENSE_COLORS = {
   fire:       { fill: "#FF6600", label: "F" }
 };
 
+const DEFENSE_SPRITES = {
+  fire: 'fire_defense',
+  barricade: 'barricade_defense'
+};
+
 export function renderDefenses(ctx, defenses) {
   for (const def of defenses) {
     const pos = DEFENSE_POSITIONS[def.side];
     if (!pos) continue;
-    const colors = DEFENSE_COLORS[def.type];
-    if (!colors) continue;
-    ctx.fillStyle = colors.fill;
-    ctx.fillRect(pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
-    ctx.fillStyle = "#e0e0e0";
-    ctx.font = "bold 12px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(colors.label, pos.x * TILE_PX + TILE_PX / 2, pos.y * TILE_PX + TILE_PX / 2);
+
+    const spriteKey = DEFENSE_SPRITES[def.type];
+    const sprite = spriteKey ? spriteImages[spriteKey] : null;
+
+    if (sprite) {
+      ctx.drawImage(sprite, pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
+    } else {
+      const colors = DEFENSE_COLORS[def.type];
+      if (!colors) continue;
+      ctx.fillStyle = colors.fill;
+      ctx.fillRect(pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
+      ctx.fillStyle = "#e0e0e0";
+      ctx.font = "bold 12px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(colors.label, pos.x * TILE_PX + TILE_PX / 2, pos.y * TILE_PX + TILE_PX / 2);
+    }
   }
 }
 
 export function renderPlayer(ctx, position, facingDirection) {
-  const px = position.x * TILE_PX + 4;
-  const py = position.y * TILE_PX + 4;
-  const size = 24;
+  const spriteKey = `erwin_${facingDirection || 'south'}`;
+  const sprite = spriteImages[spriteKey];
 
-  ctx.fillStyle = "#f5c542";
-  ctx.fillRect(px, py, size, size);
-
-  ctx.strokeStyle = "#b8860b";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(px, py, size, size);
-
-  // Facing indicator (small triangle)
-  const cx = position.x * TILE_PX + TILE_PX / 2;
-  const cy = position.y * TILE_PX + TILE_PX / 2;
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  if (facingDirection === 'north') {
-    ctx.moveTo(cx, cy - 10); ctx.lineTo(cx - 4, cy - 4); ctx.lineTo(cx + 4, cy - 4);
-  } else if (facingDirection === 'south') {
-    ctx.moveTo(cx, cy + 10); ctx.lineTo(cx - 4, cy + 4); ctx.lineTo(cx + 4, cy + 4);
-  } else if (facingDirection === 'west') {
-    ctx.moveTo(cx - 10, cy); ctx.lineTo(cx - 4, cy - 4); ctx.lineTo(cx - 4, cy + 4);
-  } else if (facingDirection === 'east') {
-    ctx.moveTo(cx + 10, cy); ctx.lineTo(cx + 4, cy - 4); ctx.lineTo(cx + 4, cy + 4);
+  if (sprite) {
+    ctx.drawImage(sprite, position.x * TILE_PX, position.y * TILE_PX, TILE_PX, TILE_PX);
+  } else {
+    const px = position.x * TILE_PX + 4;
+    const py = position.y * TILE_PX + 4;
+    ctx.fillStyle = "#f5c542";
+    ctx.fillRect(px, py, 24, 24);
+    ctx.strokeStyle = "#b8860b";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px, py, 24, 24);
   }
-  ctx.closePath();
-  ctx.fill();
 }
 
 export function renderNightOverlay(ctx) {
@@ -165,18 +203,25 @@ const WOLF_POSITIONS = {
 export function renderWolves(ctx, side, count, dead) {
   const positions = WOLF_POSITIONS[side];
   if (!positions) return;
+  const sprite = dead ? spriteImages.wolf_die : spriteImages.wolf_idle;
+
   for (let i = 0; i < Math.min(count, positions.length); i++) {
     const p = positions[i];
-    ctx.fillStyle = dead ? "#555" : "#8B4513";
-    ctx.fillRect(p.x * TILE_PX + 4, p.y * TILE_PX + 4, 24, 24);
-    ctx.strokeStyle = dead ? "#333" : "#5C2D0E";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(p.x * TILE_PX + 4, p.y * TILE_PX + 4, 24, 24);
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 10px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(dead ? "X" : "W", p.x * TILE_PX + TILE_PX / 2, p.y * TILE_PX + TILE_PX / 2);
+    if (sprite) {
+      ctx.drawImage(sprite, p.x * TILE_PX, p.y * TILE_PX, TILE_PX, TILE_PX);
+      if (dead) {
+        ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+        ctx.fillRect(p.x * TILE_PX, p.y * TILE_PX, TILE_PX, TILE_PX);
+      }
+    } else {
+      ctx.fillStyle = dead ? "#555" : "#8B4513";
+      ctx.fillRect(p.x * TILE_PX + 4, p.y * TILE_PX + 4, 24, 24);
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(dead ? "X" : "W", p.x * TILE_PX + TILE_PX / 2, p.y * TILE_PX + TILE_PX / 2);
+    }
   }
 }
 
