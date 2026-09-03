@@ -201,63 +201,76 @@ body {
   border-color: #4ade80;
 }
 
+/* The modal sits on the north edge of the canvas. The base and the four
+   defence zones stay in view, so the player can watch the agent work. */
 #planning-modal {
   position: absolute;
-  top: 50%;
+  top: 0;
   left: 0;
-  transform: translateY(-50%);
   width: 480px;
-  max-height: 460px;
-  overflow-y: auto;
-  background: rgba(15, 15, 30, 0.92);
+  box-sizing: border-box;
+  background: rgba(15, 15, 30, 0.94);
   border: 2px solid #f97316;
-  border-radius: 8px;
-  padding: 16px 20px;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 5px 10px 6px;
+  /* Never grow far enough down to cover the base or the defence zones. */
+  max-height: 150px;
+  overflow-y: auto;
   z-index: 10;
+}
+
+.planning-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 3px;
 }
 
 #planning-modal h2 {
   color: #f97316;
-  font-size: 16px;
-  letter-spacing: 2px;
-  margin-bottom: 8px;
-  text-align: center;
+  font-size: 11px;
+  letter-spacing: 1px;
+  margin: 0;
+  white-space: nowrap;
 }
 
 #planning-timer-row {
-  text-align: center;
-  font-size: 20px;
+  font-size: 14px;
   font-weight: bold;
   color: #facc15;
-  margin-bottom: 10px;
+  margin: 0;
+  white-space: nowrap;
 }
 
 #planning-threat {
   color: #ef4444;
   font-weight: bold;
-  text-align: center;
-  margin-bottom: 10px;
-  font-size: 14px;
+  margin: 0;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 #planning-inventory,
 #planning-defenses {
-  font-size: 12px;
-  margin-bottom: 8px;
-  line-height: 1.6;
+  font-size: 11px;
+  margin: 0 0 2px;
+  line-height: 1.35;
 }
 
 #planning-inventory .section-title,
 #planning-defenses .section-title {
   color: #f97316;
   font-weight: bold;
-  margin-bottom: 2px;
+  display: inline;
+  margin-right: 5px;
 }
 
 .planning-hint {
   color: #888;
-  font-size: 11px;
+  font-size: 10px;
   text-align: center;
-  margin-top: 10px;
+  margin: 2px 0 0;
   font-style: italic;
 }
