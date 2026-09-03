@@ -2,12 +2,12 @@ import './style.css'
 import { gameState, resetGameState } from './js/state.js'
 import { RESOURCE_REGISTRY } from './js/registry.js'
 import { buildMapGrid, TILE_CONFIG, GRID_SIZE } from './js/map.js'
-import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves, buildWaveWolves, renderBuildSpot, renderBow, renderArrows, WALK_FRAME_COUNT, WALK_IDLE_FRAME } from './js/renderer.js'
+import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderSlimes, SLIME_CLIPS, renderBuildSpot, renderBow, renderArrows, WALK_FRAME_COUNT, WALK_IDLE_FRAME } from './js/renderer.js'
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
 import { updateHealthBar, updateInventory, updateToolList, addLogEntry, setupDebugPanel, updateDebugButtons, updatePhaseIndicator, showPlanningModal, hidePlanningModal, updatePlanningTimer, updateFooter } from './js/ui.js'
 import { getModelContext, registerInfoTool, clearAllResourceTools, registerDefenseTools, unregisterDefenseTools, toolHandlers } from './js/tools.js'
-import { generateWaves, resolveWave } from './js/monsters.js'
+import { generateWaves, resolveWave, buildWaveSlimes } from './js/monsters.js'
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -26,14 +26,16 @@ let walkStepsLeft = 0;
 
 const WALK_FRAME_MS = 70;
 
-// Arrows in flight. The interval only sets the pace; the distance comes from
-// the clock, so a slow frame does not slow the arrow down.
-let arrowIntervalId = null;
-let arrowLastMs = 0;
-const ARROW_FRAME_MS = 40;
+// Night animation. One interval drives both the arrows and the slimes. The
+// interval only sets the pace; every distance comes from the clock, so a slow
+// frame does not slow the game down.
+let nightAnimId = null;
+let nightLastMs = 0;
+const NIGHT_FRAME_MS = 40;
+
 const ARROW_TILES_PER_SEC = 9;
 // Move in small steps and test every one. A single long jump could pass
-// straight over a wolf without ever landing on its tile.
+// straight over a slime without ever landing on its tile.
 const ARROW_SUBSTEP = 0.34;
 const ARROW_MAX_JUMP = 3;
 const ARROW_STEP = {
@@ -42,6 +44,11 @@ const ARROW_STEP = {
   west:  { dx: -1, dy: 0 },
   east:  { dx: 1, dy: 0 }
 };
+
+// Slimes crawl their 3 tiles across the action window, so the front one
+// reaches the defence tile just as the wave resolves.
+const SLIME_TILES_PER_SEC = 0.42;
+const SLIME_MAX_STEP = 1;
 
 function advanceArrow(arrow, distance) {
   const step = ARROW_STEP[arrow.dir];
@@ -57,12 +64,14 @@ function advanceArrow(arrow, distance) {
     const tx = Math.round(arrow.x);
     const ty = Math.round(arrow.y);
 
-    const wolf = gameState.waveWolves.find(w => w.alive && w.x === tx && w.y === ty);
-    if (wolf) {
-      wolf.alive = false;
+    const slime = gameState.waveSlimes.find(
+      s => s.alive && Math.round(s.x) === tx && Math.round(s.y) === ty
+    );
+    if (slime) {
+      killSlime(slime);
       gameState.nightArrowsShot += 1;
       arrow.spent = true;
-      addLogEntry(`Arrow hit! A wolf falls on the ${wolf.side} side.`, null);
+      addLogEntry(`Arrow hit! A slime bursts on the ${slime.side} side.`, null);
       return;
     }
 
@@ -74,33 +83,81 @@ function advanceArrow(arrow, distance) {
   }
 }
 
-function stepArrows() {
+// One arrow is enough. The slime flinches, then bursts, then stays as a
+// puddle for the rest of the wave.
+function killSlime(slime) {
+  if (!slime.alive) return;
+  slime.alive = false;
+  slime.clip = 'hurt';
+  slime.frame = 0;
+}
+
+function stepSlimes(elapsedSec) {
+  for (const slime of gameState.waveSlimes) {
+    const clip = SLIME_CLIPS[slime.clip] || SLIME_CLIPS.walk;
+    slime.frame += clip.fps * elapsedSec;
+
+    if (clip.loop) {
+      slime.frame %= clip.frames;
+    } else if (slime.frame >= clip.frames) {
+      if (slime.clip === 'hurt') {
+        slime.clip = 'death';
+        slime.frame = 0;
+      } else {
+        // Hold the last death frame. The puddle stays put.
+        slime.frame = clip.frames - 1;
+      }
+    }
+
+    // Only a living slime crawls, and only while the wave is live.
+    if (!slime.alive) continue;
+    if (!nightWaveState || nightWaveState.phase !== 'action') continue;
+
+    const move = Math.min(SLIME_TILES_PER_SEC * elapsedSec, SLIME_MAX_STEP);
+    slime.x += slime.dx * move;
+    slime.y += slime.dy * move;
+
+    // Never crawl past the defence tile.
+    if (slime.dx > 0) slime.x = Math.min(slime.x, slime.targetX);
+    if (slime.dx < 0) slime.x = Math.max(slime.x, slime.targetX);
+    if (slime.dy > 0) slime.y = Math.min(slime.y, slime.targetY);
+    if (slime.dy < 0) slime.y = Math.max(slime.y, slime.targetY);
+  }
+}
+
+function stepNight() {
   const now = performance.now();
-  const elapsed = now - arrowLastMs;
-  arrowLastMs = now;
+  const elapsed = (now - nightLastMs) / 1000;
+  nightLastMs = now;
 
-  if (!gameState.arrows.length) return;
+  const hasSlimes = gameState.waveSlimes.length > 0;
+  const hasArrows = gameState.arrows.length > 0;
+  if (!hasSlimes && !hasArrows) return;
 
-  const distance = Math.min((elapsed / 1000) * ARROW_TILES_PER_SEC, ARROW_MAX_JUMP);
-  for (const arrow of gameState.arrows) {
-    advanceArrow(arrow, distance);
+  if (hasSlimes) stepSlimes(elapsed);
+
+  if (hasArrows) {
+    const distance = Math.min(elapsed * ARROW_TILES_PER_SEC, ARROW_MAX_JUMP);
+    for (const arrow of gameState.arrows) {
+      advanceArrow(arrow, distance);
+    }
+    gameState.arrows = gameState.arrows.filter(a => !a.spent);
   }
 
-  gameState.arrows = gameState.arrows.filter(a => !a.spent);
   redraw();
   refreshUI();
 }
 
-function startArrowLoop() {
-  if (arrowIntervalId) return;
-  arrowLastMs = performance.now();
-  arrowIntervalId = setInterval(stepArrows, ARROW_FRAME_MS);
+function startNightAnimation() {
+  if (nightAnimId) return;
+  nightLastMs = performance.now();
+  nightAnimId = setInterval(stepNight, NIGHT_FRAME_MS);
 }
 
-function stopArrowLoop() {
-  if (arrowIntervalId) {
-    clearInterval(arrowIntervalId);
-    arrowIntervalId = null;
+function stopNightAnimation() {
+  if (nightAnimId) {
+    clearInterval(nightAnimId);
+    nightAnimId = null;
   }
   gameState.arrows = [];
 }
@@ -176,11 +233,11 @@ function redraw() {
   if (gameState.phase === 'night' && nightWaveState) {
     const wave = gameState.waves[gameState.currentWaveIndex];
     if (wave) {
-      renderWolves(ctx, gameState.waveWolves);
+      renderSlimes(ctx, gameState.waveSlimes);
       renderArrows(ctx, gameState.arrows);
 
       if (nightWaveState.phase === 'announce') {
-        renderWaveText(ctx, `Wave ${gameState.currentWaveIndex + 1}/${gameState.waves.length}: ${wave.count} wolves from the ${wave.side.toUpperCase()}!`);
+        renderWaveText(ctx, `Wave ${gameState.currentWaveIndex + 1}/${gameState.waves.length}: ${wave.count} slimes from the ${wave.side.toUpperCase()}!`);
       } else if (nightWaveState.phase === 'action') {
         renderWaveText(ctx, `DEFEND! Face ${wave.side} and press SPACE to shoot. (${gameState.waveActionTimer}s)`);
       } else if (nightWaveState.phase === 'resolve') {
@@ -296,7 +353,7 @@ function startNightPhase() {
   gameState.phase = 'night';
   gameState.waves = generateWaves(gameState.dayCount);
   gameState.currentWaveIndex = 0;
-  startArrowLoop();
+  startNightAnimation();
   refreshUI();
   redraw();
 
@@ -311,12 +368,12 @@ function processNextWave() {
 
   const wave = gameState.waves[gameState.currentWaveIndex];
   gameState.nightArrowsShot = 0;
-  gameState.waveWolves = buildWaveWolves(wave.side, wave.count);
+  gameState.waveSlimes = buildWaveSlimes(wave.side, wave.count);
   gameState.arrows = [];
 
   // Announce phase (2 seconds)
   nightWaveState = { phase: 'announce', timer: 2 };
-  addLogEntry(`Wave ${gameState.currentWaveIndex + 1}: ${wave.count} wolves from the ${wave.side}!`, null);
+  addLogEntry(`Wave ${gameState.currentWaveIndex + 1}: ${wave.count} slimes from the ${wave.side}!`, null);
   redraw();
 
   nightIntervalId = setInterval(() => {
@@ -339,10 +396,10 @@ function processNextWave() {
         const result = resolveWave(wave, gameState.defenses, gameState.nightArrowsShot);
 
         // Defences take down whatever the arrows missed. Show it on the map.
-        let toKill = gameState.waveWolves.filter(w => w.alive).length - result.remaining;
-        for (const w of gameState.waveWolves) {
+        let toKill = gameState.waveSlimes.filter(s => s.alive).length - result.remaining;
+        for (const s of gameState.waveSlimes) {
           if (toKill <= 0) break;
-          if (w.alive) { w.alive = false; toKill -= 1; }
+          if (s.alive) { killSlime(s); toKill -= 1; }
         }
         gameState.arrows = [];
 
@@ -366,7 +423,7 @@ function processNextWave() {
         if (gameState.baseHealth <= 0) {
           gameState.gameOver = true;
           nightWaveState = null;
-          stopArrowLoop();
+          stopNightAnimation();
           stopForestAnimation();
           redraw();
           renderGameOver(ctx, false, gameState);
@@ -382,8 +439,8 @@ function processNextWave() {
 
 function endNight() {
   nightWaveState = null;
-  stopArrowLoop();
-  gameState.waveWolves = [];
+  stopNightAnimation();
+  gameState.waveSlimes = [];
 
   if (gameState.dayCount >= 3) {
     gameState.gameWon = true;
@@ -435,7 +492,7 @@ function initGame() {
 
   if (nightIntervalId) { clearInterval(nightIntervalId); nightIntervalId = null; }
   if (duskIntervalId) { clearInterval(duskIntervalId); duskIntervalId = null; }
-  stopArrowLoop();
+  stopNightAnimation();
   if (loopId) { stopGameLoop(loopId); loopId = null; }
   stopWalkAnimation();
   nightWaveState = null;

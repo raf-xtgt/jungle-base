@@ -281,7 +281,7 @@ export function registerDefenseTools(modelContext, gameState, onToolCall) {
     }
     gameState.defenses.push({ type: 'spike_trap', side, durability: 1 });
     const result = { success: true, defense: 'spike_trap', side, inventory: { ...gameState.inventory } };
-    onToolCall('place_spike_trap', result, 'Sharp stakes in the ground. Wolves will not see them in the dark.');
+    onToolCall('place_spike_trap', result, 'Sharp stakes in the ground. Slimes will not see them in the dark.');
     return result;
   };
   toolHandlers['place_spike_trap'] = spikeHandler;

@@ -23,13 +23,13 @@ export const TILE_CONFIG = {
   water:      { file: "water_new.png", fallback: "#3d85c6" },
   tree:       { file: "tree_new.png", fallback: "#2d5a1e" },
   stone:      { file: "stone_new.png", fallback: "#808080" },
-  berry:      { file: "bush_brown.png", fallback: "#c44569" },
+  berry:      { file: "berry_fruit.png", fallback: "#c44569" },
   vine:       { file: "vine_plant.png", fallback: "#6a8d3e" },
   // The Joshua tree. Its bark gives rope. It stands taller than one tile.
   rope_tree:  { file: "rope_tree.png", fallback: "#6b4423", height: 46, drawOnTop: true },
   herb:       { file: "herb_plant.png", fallback: "#7ec850" },
   crash_site: { file: "bench.png", fallback: "#cc6633" },
-  // The grass track the wolves walk in on.
+  // The grass track the slimes crawl in on.
   road:       { file: "road.png", fallback: "#93a86a" },
   depleted:   { file: "stump.png", fallback: "#4a7c59" },
   // A pond is six tiles: three across and two down.
@@ -63,7 +63,7 @@ export const PERMANENT_TYPES = new Set(["water"]);
 
 // The forest and the water stop Erwin. He must cut the forest down to pass.
 // He can never walk on water.
-// The wolf roads: north and south along column 7, east along row 7.
+// The monster roads: north and south along column 7, east along row 7.
 export const ROAD_TILES = [
   ...[0, 1, 2, 3, 4, 5].map(y => [7, y]),
   ...[9, 10, 11, 12, 13, 14].map(y => [7, y]),

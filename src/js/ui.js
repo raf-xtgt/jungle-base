@@ -91,7 +91,7 @@ export function showPlanningModal(gameState) {
   const monsters = expectedMonsters(nightNum);
 
   document.getElementById('planning-threat').textContent =
-    `Night ${nightNum} — ${monsters} wolves expected`;
+    `Night ${nightNum} — ${monsters} slimes expected`;
 
   const inv = Object.entries(gameState.inventory)
     .map(([k, v]) => `${k}: ${v}`)

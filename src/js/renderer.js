@@ -8,8 +8,9 @@ export function loadSpriteImages() {
     erwin_north: '/assets/sprites/erwin_north.png',
     erwin_west: '/assets/sprites/erwin_west.png',
     erwin_east: '/assets/sprites/erwin_east.png',
-    wolf_idle: '/assets/sprites/wolf_idle.png',
-    wolf_die: '/assets/sprites/wolf_die.png',
+    slime_walk: '/assets/sprites/slime_walk.png',
+    slime_hurt: '/assets/sprites/slime_hurt.png',
+    slime_death: '/assets/sprites/slime_death.png',
     bow_north: '/assets/sprites/bow_north.png',
     bow_south: '/assets/sprites/bow_south.png',
     bow_east: '/assets/sprites/bow_east.png',
@@ -20,7 +21,10 @@ export function loadSpriteImages() {
     arrow_west: '/assets/sprites/arrow_west.png',
     crash_plane: '/assets/tiles/crash_plane.png',
     fire_defense: '/assets/tiles/fire.png',
-    barricade_defense: '/assets/tiles/barricade_rock.png'
+    spike_trap_h: '/assets/sprites/spike_trap_h.png',
+    spike_trap_v: '/assets/sprites/spike_trap_v.png',
+    barricade_h: '/assets/sprites/barricade_h.png',
+    barricade_v: '/assets/sprites/barricade_v.png'
   };
 
   const promises = Object.entries(sprites).map(([key, src]) => {
@@ -184,11 +188,13 @@ export function renderBuildSpot(ctx, gameState) {
   ctx.restore();
 }
 
-const DEFENSE_POSITIONS = {
-  north: { x: 7, y: 5 },
-  south: { x: 7, y: 9 },
-  west:  { x: 5, y: 7 },
-  east:  { x: 9, y: 7 }
+// A defence covers its whole zone: three of them in a line across the road
+// the slimes crawl in on. The middle one sits on the road itself.
+const DEFENSE_ZONES = {
+  north: [{ x: 6, y: 5 }, { x: 7, y: 5 }, { x: 8, y: 5 }],
+  south: [{ x: 6, y: 9 }, { x: 7, y: 9 }, { x: 8, y: 9 }],
+  west:  [{ x: 5, y: 6 }, { x: 5, y: 7 }, { x: 5, y: 8 }],
+  east:  [{ x: 9, y: 6 }, { x: 9, y: 7 }, { x: 9, y: 8 }]
 };
 
 const DEFENSE_COLORS = {
@@ -197,34 +203,72 @@ const DEFENSE_COLORS = {
   fire:       { fill: "#FF6600", label: "F" }
 };
 
-const DEFENSE_SPRITES = {
-  fire: 'fire_defense',
-  barricade: 'barricade_defense'
+// North and south lie across the map, so they use the horizontal sheets.
+// East and west run up and down, so they use the rotated ones. Each sheet
+// holds three pieces, one per tile of the zone.
+const DEFENSE_ART = {
+  spike_trap: {
+    h: { key: 'spike_trap_h', cw: 32, ch: 24 },
+    v: { key: 'spike_trap_v', cw: 24, ch: 32 }
+  },
+  barricade: {
+    h: { key: 'barricade_h', cw: 32, ch: 20 },
+    v: { key: 'barricade_v', cw: 20, ch: 32 }
+  },
+  // The campfire is one square sprite, so the same art works on every side.
+  fire: { single: 'fire_defense' }
 };
+
+function drawDefenseFallback(ctx, tile, type) {
+  const colors = DEFENSE_COLORS[type];
+  if (!colors) return;
+  ctx.fillStyle = colors.fill;
+  ctx.fillRect(tile.x * TILE_PX, tile.y * TILE_PX, TILE_PX, TILE_PX);
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(tile.x * TILE_PX, tile.y * TILE_PX, TILE_PX, TILE_PX);
+  ctx.fillStyle = "#e0e0e0";
+  ctx.font = "bold 12px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(colors.label, tile.x * TILE_PX + TILE_PX / 2, tile.y * TILE_PX + TILE_PX / 2);
+}
 
 export function renderDefenses(ctx, defenses) {
   for (const def of defenses) {
-    const pos = DEFENSE_POSITIONS[def.side];
-    if (!pos) continue;
+    const zone = DEFENSE_ZONES[def.side];
+    if (!zone) continue;
 
-    const spriteKey = DEFENSE_SPRITES[def.type];
-    const sprite = spriteKey ? spriteImages[spriteKey] : null;
+    const art = DEFENSE_ART[def.type];
+    const horizontal = def.side === 'north' || def.side === 'south';
 
-    if (sprite) {
-      ctx.drawImage(sprite, pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
-    } else {
-      const colors = DEFENSE_COLORS[def.type];
-      if (!colors) continue;
-      ctx.fillStyle = colors.fill;
-      ctx.fillRect(pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(pos.x * TILE_PX, pos.y * TILE_PX, TILE_PX, TILE_PX);
-      ctx.fillStyle = "#e0e0e0";
-      ctx.font = "bold 12px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(colors.label, pos.x * TILE_PX + TILE_PX / 2, pos.y * TILE_PX + TILE_PX / 2);
+    for (let i = 0; i < zone.length; i++) {
+      const tile = zone[i];
+
+      if (art && art.single) {
+        const sprite = spriteImages[art.single];
+        if (sprite) {
+          ctx.drawImage(sprite, tile.x * TILE_PX, tile.y * TILE_PX, TILE_PX, TILE_PX);
+          continue;
+        }
+      } else if (art) {
+        const cell = horizontal ? art.h : art.v;
+        const sprite = spriteImages[cell.key];
+        if (sprite) {
+          ctx.drawImage(
+            sprite,
+            horizontal ? i * cell.cw : 0,
+            horizontal ? 0 : i * cell.ch,
+            cell.cw, cell.ch,
+            tile.x * TILE_PX + (TILE_PX - cell.cw) / 2,
+            tile.y * TILE_PX + (TILE_PX - cell.ch) / 2,
+            cell.cw, cell.ch
+          );
+          continue;
+        }
+      }
+
+      drawDefenseFallback(ctx, tile, def.type);
     }
   }
 }
@@ -321,39 +365,41 @@ export function renderWaveText(ctx, text) {
   ctx.fillText(text, w / 2, 6);
 }
 
-// The wolves come in along the dirt roads, one behind the other.
-const WOLF_POSITIONS = {
-  north: [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 7, y: 2 }],
-  south: [{ x: 7, y: 14 }, { x: 7, y: 13 }, { x: 7, y: 12 }],
-  east:  [{ x: 14, y: 7 }, { x: 13, y: 7 }, { x: 12, y: 7 }],
-  west:  [{ x: 0, y: 7 }, { x: 1, y: 7 }, { x: 2, y: 7 }]
+// Slime animation sheets. Every clip uses the same 40x30 cell and the same
+// row order, so switching clips never makes the slime jump.
+export const SLIME_CLIPS = {
+  walk:  { key: 'slime_walk',  frames: 8,  fps: 10, loop: true },
+  hurt:  { key: 'slime_hurt',  frames: 5,  fps: 20, loop: false },
+  death: { key: 'slime_death', frames: 10, fps: 15, loop: false }
 };
 
-// Each wolf on the road is its own object so an arrow can kill one of them
-// and leave the rest standing.
-export function buildWaveWolves(side, count) {
-  const positions = WOLF_POSITIONS[side] || [];
-  const wolves = [];
-  for (let i = 0; i < Math.min(count, positions.length); i++) {
-    wolves.push({ x: positions[i].x, y: positions[i].y, side, alive: true });
-  }
-  return wolves;
-}
+const SLIME_W = 40;
+const SLIME_H = 30;
+const SLIME_ROW = { north: 0, south: 1, west: 2, east: 3 };
 
-export function renderWolves(ctx, wolves) {
-  if (!wolves) return;
+export function renderSlimes(ctx, slimes) {
+  if (!slimes) return;
 
-  for (const wolf of wolves) {
-    const sprite = wolf.alive ? spriteImages.wolf_idle : spriteImages.wolf_die;
+  for (const slime of slimes) {
+    const clip = SLIME_CLIPS[slime.clip] || SLIME_CLIPS.walk;
+    const sprite = spriteImages[clip.key];
+
+    // The slime is wider than a tile, so centre it and stand it on the
+    // tile floor. x and y may sit between tiles while it crawls.
+    const dx = slime.x * TILE_PX + TILE_PX / 2 - SLIME_W / 2;
+    const dy = slime.y * TILE_PX + TILE_PX - SLIME_H;
+
     if (sprite) {
-      ctx.drawImage(sprite, wolf.x * TILE_PX, wolf.y * TILE_PX, TILE_PX, TILE_PX);
-      if (!wolf.alive) {
-        ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
-        ctx.fillRect(wolf.x * TILE_PX, wolf.y * TILE_PX, TILE_PX, TILE_PX);
-      }
+      const frame = Math.min(Math.floor(slime.frame), clip.frames - 1);
+      const row = SLIME_ROW[slime.dir] ?? 1;
+      ctx.drawImage(
+        sprite,
+        frame * SLIME_W, row * SLIME_H, SLIME_W, SLIME_H,
+        dx, dy, SLIME_W, SLIME_H
+      );
     } else {
-      ctx.fillStyle = wolf.alive ? "#8B4513" : "#555";
-      ctx.fillRect(wolf.x * TILE_PX + 4, wolf.y * TILE_PX + 4, 24, 24);
+      ctx.fillStyle = slime.alive ? "#8b1a1a" : "#4a2020";
+      ctx.fillRect(slime.x * TILE_PX + 4, slime.y * TILE_PX + 8, 24, 20);
     }
   }
 }

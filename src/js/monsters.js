@@ -1,19 +1,19 @@
 // monsters.js — monster wave generation and night resolution
 
-// Wolves only come in on a road. There is no road on the west side.
+// Slimes only come in on a road. There is no road on the west side.
 const ATTACK_SIDES = ['north', 'south', 'east'];
 
 const MONSTER_CONFIG = {
-  1: { sides: 2, perSide: 2 },   // 4 wolves
-  2: { sides: 3, perSide: 2 },   // 6 wolves
-  3: { sides: 3, perSide: 3 }    // 9 wolves
+  1: { sides: 2, perSide: 2 },   // 4 slimes
+  2: { sides: 3, perSide: 2 },   // 6 slimes
+  3: { sides: 3, perSide: 3 }    // 9 slimes
 };
 
 function planFor(dayCount) {
   return MONSTER_CONFIG[dayCount] || MONSTER_CONFIG[3];
 }
 
-// How many wolves the night brings. The planning tool and the modal read this,
+// How many slimes the night brings. The planning tool and the modal read this,
 // so all three always agree.
 export function expectedMonsters(dayCount) {
   const p = planFor(dayCount);
@@ -22,6 +22,52 @@ export function expectedMonsters(dayCount) {
 
 export function expectedSides(dayCount) {
   return Math.min(planFor(dayCount).sides, ATTACK_SIDES.length);
+}
+
+// Where the slimes come in and which way they crawl. Index 0 is the one
+// furthest from the base, so the pack arrives single file down the road.
+const SPAWN_POSITIONS = {
+  north: [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 7, y: 2 }],
+  south: [{ x: 7, y: 14 }, { x: 7, y: 13 }, { x: 7, y: 12 }],
+  east:  [{ x: 14, y: 7 }, { x: 13, y: 7 }, { x: 12, y: 7 }],
+  west:  [{ x: 0, y: 7 }, { x: 1, y: 7 }, { x: 2, y: 7 }]
+};
+
+// A slime on the north road walks south, and so on. It only ever moves along
+// its own road, in a straight line.
+const TRAVEL_DIRECTION = {
+  north: { dir: 'south', dx: 0, dy: 1 },
+  south: { dir: 'north', dx: 0, dy: -1 },
+  east:  { dir: 'west', dx: -1, dy: 0 },
+  west:  { dir: 'east', dx: 1, dy: 0 }
+};
+
+// Three tiles brings the front slime exactly onto the defence tile, where the
+// barricade, spike trap or fire sits. The ones behind queue up on the road.
+export const SLIME_WALK_TILES = 3;
+
+export function buildWaveSlimes(side, count) {
+  const spawns = SPAWN_POSITIONS[side] || [];
+  const travel = TRAVEL_DIRECTION[side];
+  if (!travel) return [];
+
+  const slimes = [];
+  for (let i = 0; i < Math.min(count, spawns.length); i++) {
+    slimes.push({
+      side,
+      dir: travel.dir,
+      dx: travel.dx,
+      dy: travel.dy,
+      x: spawns[i].x,
+      y: spawns[i].y,
+      targetX: spawns[i].x + travel.dx * SLIME_WALK_TILES,
+      targetY: spawns[i].y + travel.dy * SLIME_WALK_TILES,
+      alive: true,
+      clip: 'walk',
+      frame: 0
+    });
+  }
+  return slimes;
 }
 
 export function generateWaves(dayCount) {
