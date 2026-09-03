@@ -10,6 +10,14 @@ export function loadSpriteImages() {
     erwin_east: '/assets/sprites/erwin_east.png',
     wolf_idle: '/assets/sprites/wolf_idle.png',
     wolf_die: '/assets/sprites/wolf_die.png',
+    bow_north: '/assets/sprites/bow_north.png',
+    bow_south: '/assets/sprites/bow_south.png',
+    bow_east: '/assets/sprites/bow_east.png',
+    bow_west: '/assets/sprites/bow_west.png',
+    arrow_north: '/assets/sprites/arrow_north.png',
+    arrow_south: '/assets/sprites/arrow_south.png',
+    arrow_east: '/assets/sprites/arrow_east.png',
+    arrow_west: '/assets/sprites/arrow_west.png',
     crash_plane: '/assets/tiles/crash_plane.png',
     fire_defense: '/assets/tiles/fire.png',
     barricade_defense: '/assets/tiles/barricade_rock.png'
@@ -253,6 +261,45 @@ export function renderPlayer(ctx, position, facingDirection, frame) {
   }
 }
 
+// Erwin holds the bow all through the night. It points the way he faces, so
+// the player can see his aim without moving him.
+const BOW_OFFSET = {
+  north: { dx: -13, dy: -17 },
+  south: { dx: -13, dy: 7 },
+  east:  { dx: 9, dy: -14 },
+  west:  { dx: -19, dy: -14 }
+};
+
+export function renderBow(ctx, position, facingDirection) {
+  const dir = facingDirection || 'south';
+  const sprite = spriteImages[`bow_${dir}`];
+  const offset = BOW_OFFSET[dir];
+  if (!sprite || !offset) return;
+
+  // Chest height on the 41 px tall walk sprite.
+  const cx = position.x * TILE_PX + TILE_PX / 2;
+  const cy = position.y * TILE_PX + TILE_PX - 18;
+  ctx.drawImage(sprite, cx + offset.dx, cy + offset.dy, sprite.width, sprite.height);
+}
+
+// Arrows in flight. x and y are tile coordinates and may sit between tiles.
+export function renderArrows(ctx, arrows) {
+  if (!arrows) return;
+
+  for (const arrow of arrows) {
+    const sprite = spriteImages[`arrow_${arrow.dir}`];
+    const cx = arrow.x * TILE_PX + TILE_PX / 2;
+    const cy = arrow.y * TILE_PX + TILE_PX / 2;
+
+    if (sprite) {
+      ctx.drawImage(sprite, cx - sprite.width / 2, cy - sprite.height / 2, sprite.width, sprite.height);
+    } else {
+      ctx.fillStyle = "#f5c542";
+      ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    }
+  }
+}
+
 export function renderNightOverlay(ctx) {
   ctx.fillStyle = "rgba(0, 0, 40, 0.4)";
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -282,27 +329,31 @@ const WOLF_POSITIONS = {
   west:  [{ x: 0, y: 7 }, { x: 1, y: 7 }, { x: 2, y: 7 }]
 };
 
-export function renderWolves(ctx, side, count, dead) {
-  const positions = WOLF_POSITIONS[side];
-  if (!positions) return;
-  const sprite = dead ? spriteImages.wolf_die : spriteImages.wolf_idle;
-
+// Each wolf on the road is its own object so an arrow can kill one of them
+// and leave the rest standing.
+export function buildWaveWolves(side, count) {
+  const positions = WOLF_POSITIONS[side] || [];
+  const wolves = [];
   for (let i = 0; i < Math.min(count, positions.length); i++) {
-    const p = positions[i];
+    wolves.push({ x: positions[i].x, y: positions[i].y, side, alive: true });
+  }
+  return wolves;
+}
+
+export function renderWolves(ctx, wolves) {
+  if (!wolves) return;
+
+  for (const wolf of wolves) {
+    const sprite = wolf.alive ? spriteImages.wolf_idle : spriteImages.wolf_die;
     if (sprite) {
-      ctx.drawImage(sprite, p.x * TILE_PX, p.y * TILE_PX, TILE_PX, TILE_PX);
-      if (dead) {
+      ctx.drawImage(sprite, wolf.x * TILE_PX, wolf.y * TILE_PX, TILE_PX, TILE_PX);
+      if (!wolf.alive) {
         ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
-        ctx.fillRect(p.x * TILE_PX, p.y * TILE_PX, TILE_PX, TILE_PX);
+        ctx.fillRect(wolf.x * TILE_PX, wolf.y * TILE_PX, TILE_PX, TILE_PX);
       }
     } else {
-      ctx.fillStyle = dead ? "#555" : "#8B4513";
-      ctx.fillRect(p.x * TILE_PX + 4, p.y * TILE_PX + 4, 24, 24);
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 10px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(dead ? "X" : "W", p.x * TILE_PX + TILE_PX / 2, p.y * TILE_PX + TILE_PX / 2);
+      ctx.fillStyle = wolf.alive ? "#8B4513" : "#555";
+      ctx.fillRect(wolf.x * TILE_PX + 4, wolf.y * TILE_PX + 4, 24, 24);
     }
   }
 }

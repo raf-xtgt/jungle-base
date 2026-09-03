@@ -78,7 +78,7 @@ export function updateFooter(gameState) {
   } else if (gameState.phase === 'dusk') {
     el.textContent = `Planning phase. Use your AI agent to plan defenses. Time: ${gameState.planningTimer}s`;
   } else if (gameState.phase === 'night') {
-    el.textContent = 'Arrows: Face | SPACE: Shoot | R: Repair';
+    el.textContent = 'WASD/Arrows: Aim | SPACE: Fire arrow (1 wood) | R: Repair';
   }
 }
 

@@ -38,6 +38,11 @@ export function resolveWave(wave, defenses, arrowsShot) {
   let barricadeBlocks = 0;
   const defensesUsed = [];
 
+  // Arrows count first. The player watched each one hit, so the numbers on
+  // screen and the numbers in the result line must agree.
+  const arrowKills = Math.min(remaining, arrowsShot);
+  remaining -= arrowKills;
+
   const spike = defenses.find(d => d.type === 'spike_trap' && d.side === wave.side);
   if (spike && remaining > 0) {
     spikeKills = Math.min(remaining, 2);
@@ -60,9 +65,6 @@ export function resolveWave(wave, defenses, arrowsShot) {
       defensesUsed.push({ type: 'barricade', side: wave.side, action: 'destroyed' });
     }
   }
-
-  const arrowKills = Math.min(remaining, arrowsShot);
-  remaining -= arrowKills;
 
   if (spike) {
     const idx = defenses.indexOf(spike);

@@ -194,20 +194,22 @@ function handleEKey(gameState, onAction) {
 
 function handleShootKey(gameState, onAction) {
   if (gameState.waveActionTimer <= 0) return;
-  const currentWave = gameState.waves[gameState.currentWaveIndex];
-  if (!currentWave) return;
-
-  if (gameState.facingDirection !== currentWave.side) {
-    onAction('You are facing the wrong direction!', null);
-    return;
-  }
   if (!hasItems(gameState, { wood: 1 })) {
     onAction('No wood for arrows!', null);
     return;
   }
+
+  const step = FACING_STEP[gameState.facingDirection];
+  if (!step) return;
+
   removeItem(gameState, 'wood', 1);
-  gameState.nightArrowsShot += 1;
-  onAction(`Arrow shot! 1 monster killed on the ${currentWave.side} side.`, null);
+  // The arrow starts one tile ahead of Erwin so it clears his own tile.
+  gameState.arrows.push({
+    x: gameState.position.x + step.dx,
+    y: gameState.position.y + step.dy,
+    dir: gameState.facingDirection
+  });
+  onAction(null, null);
 }
 
 function handleRepairKey(gameState, onAction) {

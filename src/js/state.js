@@ -28,7 +28,9 @@ const DEFAULTS = {
   waves: [],
   currentWaveIndex: 0,
   waveActionTimer: 0,
-  nightArrowsShot: 0
+  nightArrowsShot: 0,
+  waveWolves: [],
+  arrows: []
 };
 
 export const gameState = {
@@ -56,7 +58,9 @@ export const gameState = {
   waves: [...DEFAULTS.waves],
   currentWaveIndex: DEFAULTS.currentWaveIndex,
   waveActionTimer: DEFAULTS.waveActionTimer,
-  nightArrowsShot: DEFAULTS.nightArrowsShot
+  nightArrowsShot: DEFAULTS.nightArrowsShot,
+  waveWolves: [],
+  arrows: []
 };
 
 export function resetGameState() {
@@ -84,4 +88,6 @@ export function resetGameState() {
   gameState.currentWaveIndex = DEFAULTS.currentWaveIndex;
   gameState.waveActionTimer = DEFAULTS.waveActionTimer;
   gameState.nightArrowsShot = DEFAULTS.nightArrowsShot;
+  gameState.waveWolves = [];
+  gameState.arrows = [];
 }

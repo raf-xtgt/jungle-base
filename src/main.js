@@ -2,7 +2,7 @@ import './style.css'
 import { gameState, resetGameState } from './js/state.js'
 import { RESOURCE_REGISTRY } from './js/registry.js'
 import { buildMapGrid, TILE_CONFIG, GRID_SIZE } from './js/map.js'
-import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves, renderBuildSpot, WALK_FRAME_COUNT, WALK_IDLE_FRAME } from './js/renderer.js'
+import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves, buildWaveWolves, renderBuildSpot, renderBow, renderArrows, WALK_FRAME_COUNT, WALK_IDLE_FRAME } from './js/renderer.js'
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
 import { updateHealthBar, updateInventory, updateToolList, addLogEntry, setupDebugPanel, updateDebugButtons, updatePhaseIndicator, showPlanningModal, hidePlanningModal, updatePlanningTimer, updateFooter } from './js/ui.js'
@@ -25,6 +25,85 @@ let walkIntervalId = null;
 let walkStepsLeft = 0;
 
 const WALK_FRAME_MS = 70;
+
+// Arrows in flight. The interval only sets the pace; the distance comes from
+// the clock, so a slow frame does not slow the arrow down.
+let arrowIntervalId = null;
+let arrowLastMs = 0;
+const ARROW_FRAME_MS = 40;
+const ARROW_TILES_PER_SEC = 9;
+// Move in small steps and test every one. A single long jump could pass
+// straight over a wolf without ever landing on its tile.
+const ARROW_SUBSTEP = 0.34;
+const ARROW_MAX_JUMP = 3;
+const ARROW_STEP = {
+  north: { dx: 0, dy: -1 },
+  south: { dx: 0, dy: 1 },
+  west:  { dx: -1, dy: 0 },
+  east:  { dx: 1, dy: 0 }
+};
+
+function advanceArrow(arrow, distance) {
+  const step = ARROW_STEP[arrow.dir];
+  if (!step) { arrow.spent = true; return; }
+
+  let left = distance;
+  while (left > 0 && !arrow.spent) {
+    const move = Math.min(ARROW_SUBSTEP, left);
+    arrow.x += step.dx * move;
+    arrow.y += step.dy * move;
+    left -= move;
+
+    const tx = Math.round(arrow.x);
+    const ty = Math.round(arrow.y);
+
+    const wolf = gameState.waveWolves.find(w => w.alive && w.x === tx && w.y === ty);
+    if (wolf) {
+      wolf.alive = false;
+      gameState.nightArrowsShot += 1;
+      arrow.spent = true;
+      addLogEntry(`Arrow hit! A wolf falls on the ${wolf.side} side.`, null);
+      return;
+    }
+
+    if (tx < 0 || tx >= GRID_SIZE || ty < 0 || ty >= GRID_SIZE) {
+      arrow.spent = true;
+      addLogEntry('Arrow missed.', null);
+      return;
+    }
+  }
+}
+
+function stepArrows() {
+  const now = performance.now();
+  const elapsed = now - arrowLastMs;
+  arrowLastMs = now;
+
+  if (!gameState.arrows.length) return;
+
+  const distance = Math.min((elapsed / 1000) * ARROW_TILES_PER_SEC, ARROW_MAX_JUMP);
+  for (const arrow of gameState.arrows) {
+    advanceArrow(arrow, distance);
+  }
+
+  gameState.arrows = gameState.arrows.filter(a => !a.spent);
+  redraw();
+  refreshUI();
+}
+
+function startArrowLoop() {
+  if (arrowIntervalId) return;
+  arrowLastMs = performance.now();
+  arrowIntervalId = setInterval(stepArrows, ARROW_FRAME_MS);
+}
+
+function stopArrowLoop() {
+  if (arrowIntervalId) {
+    clearInterval(arrowIntervalId);
+    arrowIntervalId = null;
+  }
+  gameState.arrows = [];
+}
 
 // The jungle sways all the time. One step every 140 ms.
 let forestTick = 0;
@@ -90,20 +169,22 @@ function redraw() {
 
   renderPlayer(ctx, gameState.position, gameState.facingDirection, walkFrame);
 
+  if (gameState.phase === 'night') {
+    renderBow(ctx, gameState.position, gameState.facingDirection);
+  }
+
   if (gameState.phase === 'night' && nightWaveState) {
     const wave = gameState.waves[gameState.currentWaveIndex];
     if (wave) {
+      renderWolves(ctx, gameState.waveWolves);
+      renderArrows(ctx, gameState.arrows);
+
       if (nightWaveState.phase === 'announce') {
         renderWaveText(ctx, `Wave ${gameState.currentWaveIndex + 1}/${gameState.waves.length}: ${wave.count} wolves from the ${wave.side.toUpperCase()}!`);
-        renderWolves(ctx, wave.side, wave.count, false);
       } else if (nightWaveState.phase === 'action') {
         renderWaveText(ctx, `DEFEND! Face ${wave.side} and press SPACE to shoot. (${gameState.waveActionTimer}s)`);
-        renderWolves(ctx, wave.side, wave.count, false);
       } else if (nightWaveState.phase === 'resolve') {
         renderWaveText(ctx, nightWaveState.resultText);
-        if (nightWaveState.result) {
-          renderWolves(ctx, wave.side, wave.count, true);
-        }
       }
     }
   }
@@ -215,6 +296,7 @@ function startNightPhase() {
   gameState.phase = 'night';
   gameState.waves = generateWaves(gameState.dayCount);
   gameState.currentWaveIndex = 0;
+  startArrowLoop();
   refreshUI();
   redraw();
 
@@ -229,6 +311,8 @@ function processNextWave() {
 
   const wave = gameState.waves[gameState.currentWaveIndex];
   gameState.nightArrowsShot = 0;
+  gameState.waveWolves = buildWaveWolves(wave.side, wave.count);
+  gameState.arrows = [];
 
   // Announce phase (2 seconds)
   nightWaveState = { phase: 'announce', timer: 2 };
@@ -245,13 +329,23 @@ function processNextWave() {
       gameState.waveActionTimer = 8;
       redraw();
     } else if (nightWaveState.phase === 'action') {
+      // The tick at the top of this loop already counted this second down.
+      // Counting again here cut the shooting window in half.
       gameState.waveActionTimer -= 1;
-      nightWaveState.timer -= 1;
       redraw();
 
       if (nightWaveState.timer <= 0) {
         // Resolve the wave
         const result = resolveWave(wave, gameState.defenses, gameState.nightArrowsShot);
+
+        // Defences take down whatever the arrows missed. Show it on the map.
+        let toKill = gameState.waveWolves.filter(w => w.alive).length - result.remaining;
+        for (const w of gameState.waveWolves) {
+          if (toKill <= 0) break;
+          if (w.alive) { w.alive = false; toKill -= 1; }
+        }
+        gameState.arrows = [];
+
         gameState.baseHealth -= result.baseDamage;
         if (gameState.baseHealth < 0) gameState.baseHealth = 0;
         gameState.waveActionTimer = 0;
@@ -272,6 +366,7 @@ function processNextWave() {
         if (gameState.baseHealth <= 0) {
           gameState.gameOver = true;
           nightWaveState = null;
+          stopArrowLoop();
           stopForestAnimation();
           redraw();
           renderGameOver(ctx, false, gameState);
@@ -287,6 +382,8 @@ function processNextWave() {
 
 function endNight() {
   nightWaveState = null;
+  stopArrowLoop();
+  gameState.waveWolves = [];
 
   if (gameState.dayCount >= 3) {
     gameState.gameWon = true;
@@ -338,6 +435,7 @@ function initGame() {
 
   if (nightIntervalId) { clearInterval(nightIntervalId); nightIntervalId = null; }
   if (duskIntervalId) { clearInterval(duskIntervalId); duskIntervalId = null; }
+  stopArrowLoop();
   if (loopId) { stopGameLoop(loopId); loopId = null; }
   stopWalkAnimation();
   nightWaveState = null;
