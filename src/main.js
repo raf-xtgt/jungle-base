@@ -2,7 +2,7 @@ import './style.css'
 import { gameState, resetGameState } from './js/state.js'
 import { RESOURCE_REGISTRY } from './js/registry.js'
 import { buildMapGrid, TILE_CONFIG, GRID_SIZE } from './js/map.js'
-import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves } from './js/renderer.js'
+import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves, WALK_FRAME_COUNT, WALK_IDLE_FRAME } from './js/renderer.js'
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
 import { updateHealthBar, updateInventory, updateToolList, addLogEntry, setupDebugPanel, updateDebugButtons, updatePhaseIndicator, showPlanningModal, hidePlanningModal, updatePlanningTimer, updateFooter } from './js/ui.js'
@@ -20,6 +20,39 @@ let duskIntervalId = null;
 let nightIntervalId = null;
 let gameStarted = false;
 let nightWaveState = null; // { phase: 'announce'|'action'|'resolve', timer: N }
+let walkFrame = WALK_IDLE_FRAME;
+let walkIntervalId = null;
+let walkStepsLeft = 0;
+
+const WALK_FRAME_MS = 70;
+
+// Play one short walk cycle. Each step key press restarts it.
+function playWalkAnimation() {
+  walkStepsLeft = WALK_FRAME_COUNT;
+  if (walkIntervalId) return;
+
+  walkIntervalId = setInterval(() => {
+    walkFrame = (walkFrame + 1) % WALK_FRAME_COUNT;
+    walkStepsLeft -= 1;
+    redraw();
+
+    if (walkStepsLeft <= 0) {
+      clearInterval(walkIntervalId);
+      walkIntervalId = null;
+      walkFrame = WALK_IDLE_FRAME;
+      redraw();
+    }
+  }, WALK_FRAME_MS);
+}
+
+function stopWalkAnimation() {
+  if (walkIntervalId) {
+    clearInterval(walkIntervalId);
+    walkIntervalId = null;
+  }
+  walkStepsLeft = 0;
+  walkFrame = WALK_IDLE_FRAME;
+}
 
 function redraw() {
   renderMap(ctx, grid, tileImages, TILE_CONFIG);
@@ -34,7 +67,7 @@ function redraw() {
     renderNightOverlay(ctx);
   }
 
-  renderPlayer(ctx, gameState.position, gameState.facingDirection);
+  renderPlayer(ctx, gameState.position, gameState.facingDirection, walkFrame);
 
   if (gameState.phase === 'night' && nightWaveState) {
     const wave = gameState.waves[gameState.currentWaveIndex];
@@ -272,6 +305,7 @@ function initGame() {
   if (nightIntervalId) { clearInterval(nightIntervalId); nightIntervalId = null; }
   if (duskIntervalId) { clearInterval(duskIntervalId); duskIntervalId = null; }
   if (loopId) { stopGameLoop(loopId); loopId = null; }
+  stopWalkAnimation();
   nightWaveState = null;
 
   clearAllResourceTools(modelContext, gameState, RESOURCE_REGISTRY);
@@ -333,6 +367,7 @@ Promise.all([loadTileImages(TILE_CONFIG), loadSpriteImages()]).then(([images]) =
   setupKeyboardInput(gameState, {
     onMove: () => {
       updateExploredTiles(gameState);
+      playWalkAnimation();
       redraw();
       refreshUI();
       updateDebugButtons(toolHandlers, refreshUI, redraw);

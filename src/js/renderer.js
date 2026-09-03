@@ -155,12 +155,27 @@ export function renderDefenses(ctx, defenses) {
   }
 }
 
-export function renderPlayer(ctx, position, facingDirection) {
+// Erwin walk strips: 4 frames per direction, laid out left to right.
+// Each frame is 32 wide and 41 tall, so Erwin stands taller than one tile.
+export const WALK_FRAME_COUNT = 4;
+export const WALK_IDLE_FRAME = 0;
+const WALK_FRAME_W = 32;
+const WALK_FRAME_H = 41;
+
+export function renderPlayer(ctx, position, facingDirection, frame) {
   const spriteKey = `erwin_${facingDirection || 'south'}`;
   const sprite = spriteImages[spriteKey];
 
   if (sprite) {
-    ctx.drawImage(sprite, position.x * TILE_PX, position.y * TILE_PX, TILE_PX, TILE_PX);
+    const index = ((frame || 0) % WALK_FRAME_COUNT + WALK_FRAME_COUNT) % WALK_FRAME_COUNT;
+    // Anchor the feet to the bottom of the tile. The extra height overlaps the tile above.
+    const dx = position.x * TILE_PX;
+    const dy = position.y * TILE_PX + TILE_PX - WALK_FRAME_H;
+    ctx.drawImage(
+      sprite,
+      index * WALK_FRAME_W, 0, WALK_FRAME_W, WALK_FRAME_H,
+      dx, dy, WALK_FRAME_W, WALK_FRAME_H
+    );
   } else {
     const px = position.x * TILE_PX + 4;
     const py = position.y * TILE_PX + 4;
