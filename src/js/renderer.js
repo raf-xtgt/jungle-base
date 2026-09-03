@@ -10,6 +10,7 @@ export function loadSpriteImages() {
     erwin_east: '/assets/sprites/erwin_east.png',
     wolf_idle: '/assets/sprites/wolf_idle.png',
     wolf_die: '/assets/sprites/wolf_die.png',
+    crash_plane: '/assets/tiles/crash_plane.png',
     fire_defense: '/assets/tiles/fire.png',
     barricade_defense: '/assets/tiles/barricade_rock.png'
   };
@@ -50,33 +51,71 @@ export function loadTileImages(tileConfig) {
 
 const TILE_PX = 32;
 
-export function renderMap(ctx, grid, tileImages, tileConfig) {
+export function renderMap(ctx, grid, tileImages, tileConfig, frameTick) {
   ctx.imageSmoothingEnabled = false;
   const grassImg = tileImages['grass'];
+  const tick = frameTick || 0;
 
+  // Pass 1 — lay the ground under everything.
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[y].length; x++) {
-      // Draw grass underneath every tile (handles transparent backgrounds)
       if (grassImg) {
         ctx.drawImage(grassImg, x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
       } else {
         ctx.fillStyle = tileConfig.grass.fallback;
         ctx.fillRect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
       }
+    }
+  }
 
+  // Pass 2 — draw the objects from the top row down, so a tall canopy
+  // correctly covers the row behind it. Landmarks go in a third pass.
+  const onTop = [];
+
+  for (let y = 0; y < grid.length; y++) {
+    for (let x = 0; x < grid[y].length; x++) {
       const type = grid[y][x];
       if (type === 'grass') continue;
+      if (tileConfig[type] && tileConfig[type].drawOnTop) { onTop.push({ x, y, type }); continue; }
 
+      const config = tileConfig[type];
       const img = tileImages[type];
-      if (img) {
-        ctx.drawImage(img, x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
-      } else {
-        const config = tileConfig[type];
+
+      if (!img) {
         if (config) {
           ctx.fillStyle = config.fallback;
           ctx.fillRect(x * TILE_PX, y * TILE_PX, TILE_PX, TILE_PX);
         }
+        continue;
       }
+
+      const h = (config && config.height) || TILE_PX;
+      const dy = y * TILE_PX + TILE_PX - h;
+
+      if (config && config.frames) {
+        // Animated strip. Each tile gets its own offset so the jungle does
+        // not sway in lockstep.
+        const offset = (x * 5 + y * 3) % config.frames;
+        const frame = (tick + offset) % config.frames;
+        ctx.drawImage(img, frame * TILE_PX, 0, TILE_PX, h, x * TILE_PX, dy, TILE_PX, h);
+      } else {
+        ctx.drawImage(img, x * TILE_PX, dy, TILE_PX, h);
+      }
+    }
+  }
+
+  // Pass 3 — landmarks. These stand above the jungle so the player can find
+  // them from far away.
+  for (const item of onTop) {
+    const config = tileConfig[item.type];
+    const img = tileImages[item.type];
+    const h = (config && config.height) || TILE_PX;
+    const dy = item.y * TILE_PX + TILE_PX - h;
+    if (img) {
+      ctx.drawImage(img, item.x * TILE_PX, dy, TILE_PX, h);
+    } else if (config) {
+      ctx.fillStyle = config.fallback;
+      ctx.fillRect(item.x * TILE_PX, item.y * TILE_PX, TILE_PX, TILE_PX);
     }
   }
 }
@@ -94,6 +133,7 @@ export function renderFog(ctx, exploredTiles, gridSize) {
 
 export function renderBase(ctx, baseBuilt) {
   if (!baseBuilt) return;
+
   for (let by = 6; by <= 8; by++) {
     for (let bx = 6; bx <= 8; bx++) {
       ctx.fillStyle = "#8B4513";
@@ -108,6 +148,32 @@ export function renderBase(ctx, baseBuilt) {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText("B", 7 * TILE_PX + TILE_PX / 2, 7 * TILE_PX + TILE_PX / 2);
+}
+
+// The crashed plane marks the spot before the base is built. It is scenery,
+// not the base. The glowing tile shows exactly where to stand.
+export function renderBuildSpot(ctx, gameState) {
+  if (gameState.baseBuilt) return;
+
+  const plane = spriteImages.crash_plane;
+  if (plane) {
+    // 96 wide by 80 tall, sitting in the middle of the 3x3 area.
+    ctx.drawImage(plane, 6 * TILE_PX, 6 * TILE_PX + 8, 96, 80);
+  }
+
+  ctx.save();
+  ctx.fillStyle = "rgba(250, 204, 21, 0.25)";
+  ctx.fillRect(7 * TILE_PX, 7 * TILE_PX, TILE_PX, TILE_PX);
+  ctx.strokeStyle = "rgba(250, 204, 21, 1)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(7 * TILE_PX + 1, 7 * TILE_PX + 1, TILE_PX - 2, TILE_PX - 2);
+
+  ctx.fillStyle = "rgba(250, 204, 21, 1)";
+  ctx.font = "bold 10px monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("BUILD", 7 * TILE_PX + TILE_PX / 2, 6 * TILE_PX - 2);
+  ctx.restore();
 }
 
 const DEFENSE_POSITIONS = {

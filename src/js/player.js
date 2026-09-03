@@ -1,6 +1,6 @@
 // player.js — Erwin movement, keyboard input, context actions
 
-import { GRID_SIZE } from './map.js'
+import { GRID_SIZE, isBlockedTile, isChoppableTile, getNodeFootprint, isNextToNode, PERMANENT_TYPES } from './map.js'
 import { addItem, removeItem, hasItems } from './inventory.js'
 
 const KEY_MAP = {
@@ -15,12 +15,8 @@ const KEY_MAP = {
 };
 
 function findNearbyResource(gameState, resourceRegistry) {
-  const px = gameState.position.x;
-  const py = gameState.position.y;
   for (const node of resourceRegistry) {
-    if (node.supply > 0 &&
-        Math.abs(node.position.x - px) <= 1 &&
-        Math.abs(node.position.y - py) <= 1) {
+    if (node.supply > 0 && isNextToNode(gameState.position, node)) {
       return node;
     }
   }
@@ -40,11 +36,21 @@ export function setupKeyboardInput(gameState, callbacks) {
         if (e.key.startsWith('Arrow')) e.preventDefault();
         const newX = gameState.position.x + move.dx;
         const newY = gameState.position.y + move.dy;
-        if (newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE) {
+        const grid = getGrid();
+
+        // Always turn, even when the way is blocked. Erwin must face a tree
+        // before he can cut it.
+        gameState.facingDirection = move.dir;
+
+        const inGrid = newX >= 0 && newX < GRID_SIZE && newY >= 0 && newY < GRID_SIZE;
+        const blocked = inGrid && grid && isBlockedTile(grid[newY][newX]);
+
+        if (inGrid && !blocked) {
           gameState.position.x = newX;
           gameState.position.y = newY;
-          gameState.facingDirection = move.dir;
           onMove();
+        } else {
+          onAction(null, null);
         }
         return;
       }
@@ -84,6 +90,22 @@ export function setupKeyboardInput(gameState, callbacks) {
   });
 }
 
+const FACING_STEP = {
+  north: { dx: 0, dy: -1 },
+  south: { dx: 0, dy: 1 },
+  west:  { dx: -1, dy: 0 },
+  east:  { dx: 1, dy: 0 }
+};
+
+function tileInFront(gameState) {
+  const step = FACING_STEP[gameState.facingDirection];
+  if (!step) return null;
+  const x = gameState.position.x + step.dx;
+  const y = gameState.position.y + step.dy;
+  if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return null;
+  return { x, y };
+}
+
 function handleRKey(gameState, resourceRegistry, grid, onAction) {
   const px = gameState.position.x;
   const py = gameState.position.y;
@@ -101,19 +123,47 @@ function handleRKey(gameState, resourceRegistry, grid, onAction) {
       onAction('Base built! Dusk approaches in 30 seconds.', null);
       return;
     }
+    // Say what is missing. Do not fail without a message.
+    const missing = Object.entries(baseCost)
+      .filter(([item, need]) => (gameState.inventory[item] || 0) < need)
+      .map(([item, need]) => `${need - (gameState.inventory[item] || 0)} more ${item}`)
+      .join(', ');
+    onAction(`Cannot build the base yet. You need ${missing}.`, null);
+    return;
   }
 
-  // Priority 2: collect nearby resource
+  // Priority 2: cut down the tree Erwin faces. This gives wood and opens
+  // the way. Resources sit behind a ring of jungle.
+  const front = tileInFront(gameState);
+  if (grid && front && isChoppableTile(grid[front.y][front.x])) {
+    grid[front.y][front.x] = 'grass';
+    addItem(gameState, 'wood', 1);
+    if (gameState.clearedTiles) gameState.clearedTiles.add(`${front.x},${front.y}`);
+    onAction('Cut down a tree. +1 wood.', 'Cut low on the trunk. A high cut wastes good wood.');
+    return;
+  }
+
+  // Priority 3: collect nearby resource
   const node = findNearbyResource(gameState, resourceRegistry);
   if (node) {
-    node.supply -= 1;
+    // A pond never runs dry, so its supply never goes down.
+    if (!PERMANENT_TYPES.has(node.type)) node.supply -= 1;
     addItem(gameState, node.tool.yield.item, node.tool.yield.amount);
     const msg = `Collected ${node.tool.yield.amount} ${node.tool.yield.item} from ${node.type}.`;
-    if (node.supply <= 0 && grid) {
-      grid[node.position.y][node.position.x] = 'depleted';
+    // When the patch is used up it goes back to plain grass. Water is part of
+    // the land, so a pond stays on the map.
+    if (node.supply <= 0 && grid && !PERMANENT_TYPES.has(node.type)) {
+      for (const t of getNodeFootprint(node)) {
+        if (grid[t.y][t.x] === t.tile) grid[t.y][t.x] = 'grass';
+      }
     }
     onAction(msg, node.tool.tip);
     return;
+  }
+
+  // Nothing happened. If Erwin is near the build spot, point him at it.
+  if (!gameState.baseBuilt && px >= 6 && px <= 8 && py >= 6 && py <= 8) {
+    onAction('Stand on the marked tile in the middle to build the base.', null);
   }
 }
 

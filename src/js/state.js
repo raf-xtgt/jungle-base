@@ -37,6 +37,8 @@ export const gameState = {
   position: { ...DEFAULTS.position },
   inventory: { ...DEFAULTS.inventory },
   exploredTiles: new Set(),
+  // Tiles Erwin has cut open. The jungle does not grow back over them.
+  clearedTiles: new Set(),
   registeredTools: new Set(),
   elapsedTime: DEFAULTS.elapsedTime,
   gameOver: DEFAULTS.gameOver,
@@ -63,6 +65,7 @@ export function resetGameState() {
   gameState.position = { ...DEFAULTS.position };
   gameState.inventory = { ...DEFAULTS.inventory };
   gameState.exploredTiles = new Set();
+  gameState.clearedTiles = new Set();
   gameState.registeredTools = new Set();
   gameState.elapsedTime = DEFAULTS.elapsedTime;
   gameState.gameOver = DEFAULTS.gameOver;

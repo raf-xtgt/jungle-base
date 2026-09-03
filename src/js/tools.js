@@ -1,6 +1,7 @@
 // tools.js — WebMCP registration, feature detection, toolHandlers lookup
 
 import { addItem, removeItem, hasItems } from './inventory.js'
+import { isNextToNode } from './map.js'
 
 export const toolHandlers = {};
 
@@ -13,10 +14,8 @@ export function getModelContext() {
 }
 
 function getNearbyNodes(gameState, resourceRegistry) {
-  const px = gameState.position.x;
-  const py = gameState.position.y;
   return resourceRegistry
-    .filter(n => Math.abs(n.position.x - px) <= 1 && Math.abs(n.position.y - py) <= 1 && n.supply > 0)
+    .filter(n => n.supply > 0 && isNextToNode(gameState.position, n))
     .map(n => ({ id: n.id, type: n.type, supply: n.supply, tool: n.tool.name }));
 }
 

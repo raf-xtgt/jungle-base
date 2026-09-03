@@ -2,7 +2,7 @@ import './style.css'
 import { gameState, resetGameState } from './js/state.js'
 import { RESOURCE_REGISTRY } from './js/registry.js'
 import { buildMapGrid, TILE_CONFIG, GRID_SIZE } from './js/map.js'
-import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves, WALK_FRAME_COUNT, WALK_IDLE_FRAME } from './js/renderer.js'
+import { loadTileImages, loadSpriteImages, renderMap, renderFog, renderPlayer, renderGameOver, renderStartScreen, renderBase, renderDefenses, renderNightOverlay, renderDuskOverlay, renderWaveText, renderWolves, renderBuildSpot, WALK_FRAME_COUNT, WALK_IDLE_FRAME } from './js/renderer.js'
 import { setupKeyboardInput, updateExploredTiles } from './js/player.js'
 import { startGameLoop, stopGameLoop } from './js/game.js'
 import { updateHealthBar, updateInventory, updateToolList, addLogEntry, setupDebugPanel, updateDebugButtons, updatePhaseIndicator, showPlanningModal, hidePlanningModal, updatePlanningTimer, updateFooter } from './js/ui.js'
@@ -25,6 +25,26 @@ let walkIntervalId = null;
 let walkStepsLeft = 0;
 
 const WALK_FRAME_MS = 70;
+
+// The jungle sways all the time. One step every 140 ms.
+let forestTick = 0;
+let forestIntervalId = null;
+const FOREST_FRAME_MS = 140;
+
+function startForestAnimation() {
+  if (forestIntervalId) return;
+  forestIntervalId = setInterval(() => {
+    forestTick += 1;
+    redraw();
+  }, FOREST_FRAME_MS);
+}
+
+function stopForestAnimation() {
+  if (forestIntervalId) {
+    clearInterval(forestIntervalId);
+    forestIntervalId = null;
+  }
+}
 
 // Play one short walk cycle. Each step key press restarts it.
 function playWalkAnimation() {
@@ -55,8 +75,9 @@ function stopWalkAnimation() {
 }
 
 function redraw() {
-  renderMap(ctx, grid, tileImages, TILE_CONFIG);
+  renderMap(ctx, grid, tileImages, TILE_CONFIG, forestTick);
   renderBase(ctx, gameState.baseBuilt);
+  if (gameState.phase === 'morning') renderBuildSpot(ctx, gameState);
   renderDefenses(ctx, gameState.defenses);
   renderFog(ctx, gameState.exploredTiles, GRID_SIZE);
 
@@ -115,6 +136,16 @@ function onToolCall(toolName, result, tip) {
   }
 }
 
+// Rebuild the map, then re-open every tile Erwin has already cut.
+function rebuildGrid() {
+  const next = buildMapGrid(RESOURCE_REGISTRY);
+  for (const key of gameState.clearedTiles) {
+    const [x, y] = key.split(',').map(Number);
+    if (next[y] && next[y][x] === 'forest') next[y][x] = 'grass';
+  }
+  return next;
+}
+
 function resetResourceSupplies() {
   for (const node of RESOURCE_REGISTRY) {
     const original = RESOURCE_REGISTRY.find(n => n.id === node.id);
@@ -127,7 +158,7 @@ function startMorningPhase() {
   if (gameState.dayCount > 1) {
     gameState.morningTimer = 90;
     resetResourceSupplies();
-    grid = buildMapGrid(RESOURCE_REGISTRY);
+    grid = rebuildGrid();
     gameState.defenses = gameState.defenses.filter(d => d.type !== 'fire');
   }
   refreshUI();
@@ -138,6 +169,7 @@ function startMorningPhase() {
     refreshUI();
     if (gameState.gameOver) {
       stopGameLoop(loopId);
+      stopForestAnimation();
       redraw();
       renderGameOver(ctx, false, gameState);
     }
@@ -240,6 +272,7 @@ function processNextWave() {
         if (gameState.baseHealth <= 0) {
           gameState.gameOver = true;
           nightWaveState = null;
+          stopForestAnimation();
           redraw();
           renderGameOver(ctx, false, gameState);
           return;
@@ -257,6 +290,7 @@ function endNight() {
 
   if (gameState.dayCount >= 3) {
     gameState.gameWon = true;
+    stopForestAnimation();
     redraw();
     renderGameOver(ctx, true, gameState);
     addLogEntry('Rescue arrived! Erwin survived!', null);
@@ -313,7 +347,7 @@ function initGame() {
     delete toolHandlers[key];
   }
 
-  grid = buildMapGrid(RESOURCE_REGISTRY);
+  grid = rebuildGrid();
 
   registerInfoTool(modelContext, gameState, RESOURCE_REGISTRY);
 
@@ -338,11 +372,13 @@ function initGame() {
       refreshUI();
       if (gameState.gameOver) {
         stopGameLoop(loopId);
+        stopForestAnimation();
         redraw();
         renderGameOver(ctx, false, gameState);
       }
       if (gameState.gameWon) {
         stopGameLoop(loopId);
+        stopForestAnimation();
         redraw();
         renderGameOver(ctx, true, gameState);
       }
@@ -351,6 +387,7 @@ function initGame() {
     });
   }
 
+  startForestAnimation();
   gameStarted = true;
 }
 

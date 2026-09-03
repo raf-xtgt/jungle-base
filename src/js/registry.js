@@ -195,6 +195,58 @@ export const RESOURCE_REGISTRY = [
       yield: { item: "herbs", amount: 2 },
       tip: "Plantain leaves can stop bleeding when pressed on a wound."
     }
+  },
+  {
+    id: "rope_tree_1",
+    type: "rope_tree",
+    position: { x: 11, y: 1 },
+    supply: 4,
+    tool: {
+      name: "strip_bark",
+      title: "Strip Bark",
+      description: "Strip fibre from a Joshua tree and twist it into rope. Adds 1 rope to Erwin's inventory. Erwin must be near a Joshua tree.",
+      yield: { item: "rope", amount: 1 },
+      tip: "Twist the fibre while it is still damp. Dry fibre snaps."
+    }
+  },
+  {
+    id: "rope_tree_2",
+    type: "rope_tree",
+    position: { x: 13, y: 1 },
+    supply: 4,
+    tool: {
+      name: "strip_bark",
+      title: "Strip Bark",
+      description: "Strip fibre from a Joshua tree and twist it into rope. Adds 1 rope to Erwin's inventory. Erwin must be near a Joshua tree.",
+      yield: { item: "rope", amount: 1 },
+      tip: "Twist the fibre while it is still damp. Dry fibre snaps."
+    }
+  },
+  {
+    id: "rope_tree_3",
+    type: "rope_tree",
+    position: { x: 11, y: 3 },
+    supply: 4,
+    tool: {
+      name: "strip_bark",
+      title: "Strip Bark",
+      description: "Strip fibre from a Joshua tree and twist it into rope. Adds 1 rope to Erwin's inventory. Erwin must be near a Joshua tree.",
+      yield: { item: "rope", amount: 1 },
+      tip: "Twist the fibre while it is still damp. Dry fibre snaps."
+    }
+  },
+  {
+    id: "rope_tree_4",
+    type: "rope_tree",
+    position: { x: 13, y: 3 },
+    supply: 4,
+    tool: {
+      name: "strip_bark",
+      title: "Strip Bark",
+      description: "Strip fibre from a Joshua tree and twist it into rope. Adds 1 rope to Erwin's inventory. Erwin must be near a Joshua tree.",
+      yield: { item: "rope", amount: 1 },
+      tip: "Twist the fibre while it is still damp. Dry fibre snaps."
+    }
   }
 ];
 
