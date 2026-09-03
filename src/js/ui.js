@@ -1,5 +1,7 @@
 // ui.js — UI updates (health bar, inventory panel, log, debug panel)
 
+import { expectedMonsters } from './monsters.js'
+
 const PHASE_COLORS = {
   morning: '#facc15',
   dusk: '#f97316',
@@ -80,15 +82,13 @@ export function updateFooter(gameState) {
   }
 }
 
-const MONSTER_COUNTS = { 1: 4, 2: 6, 3: 8 };
-
 export function showPlanningModal(gameState) {
   const modal = document.getElementById('planning-modal');
   if (!modal) return;
   modal.style.display = 'block';
 
   const nightNum = gameState.dayCount;
-  const monsters = MONSTER_COUNTS[nightNum] || 8;
+  const monsters = expectedMonsters(nightNum);
 
   document.getElementById('planning-threat').textContent =
     `Night ${nightNum} — ${monsters} wolves expected`;

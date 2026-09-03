@@ -94,7 +94,7 @@ export const RESOURCE_REGISTRY = [
   {
     id: "tree_3",
     type: "tree",
-    position: { x: 13, y: 7 },
+    position: { x: 13, y: 6 },
     supply: 6,
     tileFile: "rpgTile155.png",
     depletedTileFile: "rpgTile004.png",

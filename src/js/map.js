@@ -29,6 +29,8 @@ export const TILE_CONFIG = {
   rope_tree:  { file: "rope_tree.png", fallback: "#6b4423", height: 46, drawOnTop: true },
   herb:       { file: "herb_plant.png", fallback: "#7ec850" },
   crash_site: { file: "bench.png", fallback: "#cc6633" },
+  // The grass track the wolves walk in on.
+  road:       { file: "road.png", fallback: "#93a86a" },
   depleted:   { file: "stump.png", fallback: "#4a7c59" },
   // A pond is six tiles: three across and two down.
   pond_nw:    { file: "pond_nw.png", fallback: "#3d85c6" },
@@ -61,6 +63,13 @@ export const PERMANENT_TYPES = new Set(["water"]);
 
 // The forest and the water stop Erwin. He must cut the forest down to pass.
 // He can never walk on water.
+// The wolf roads: north and south along column 7, east along row 7.
+export const ROAD_TILES = [
+  ...[0, 1, 2, 3, 4, 5].map(y => [7, y]),
+  ...[9, 10, 11, 12, 13, 14].map(y => [7, y]),
+  ...[9, 10, 11, 12, 13, 14].map(x => [x, 7])
+];
+
 const BLOCKING_TILES = new Set([
   'forest', 'water',
   'pond_nw', 'pond_n', 'pond_ne',
@@ -168,6 +177,30 @@ export function buildMapGrid(resourceRegistry) {
         }
       }
     }
+  }
+
+  // 6. Lay the three dirt roads last, so no jungle grows back over them.
+  //    The road runs through the defence line, so a barricade sits on it.
+  //    It may take one tile from a wide patch, but never the last tile of
+  //    a patch and never the base or the crash site.
+  const patchSize = new Map();
+  for (const [id, tiles] of footprints) patchSize.set(id, tiles.length);
+  const tileOwner = new Map();
+  for (const [id, tiles] of footprints) {
+    for (const t of tiles) tileOwner.set(`${t.x},${t.y}`, id);
+  }
+
+  for (const [x, y] of ROAD_TILES) {
+    if (!inBounds(x, y)) continue;
+    if (inBaseArea(x, y)) continue;
+    if (x === CRASH_SITE.x && y === CRASH_SITE.y) continue;
+
+    const owner = tileOwner.get(`${x},${y}`);
+    if (owner) {
+      if (patchSize.get(owner) <= 1) continue;   // keep single-tile resources
+      patchSize.set(owner, patchSize.get(owner) - 1);
+    }
+    grid[y][x] = "road";
   }
 
   return grid;

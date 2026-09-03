@@ -2,6 +2,7 @@
 
 import { addItem, removeItem, hasItems } from './inventory.js'
 import { isNextToNode } from './map.js'
+import { expectedMonsters, expectedSides } from './monsters.js'
 
 export const toolHandlers = {};
 
@@ -208,9 +209,6 @@ const DEFENSE_COSTS = {
   fire: { wood: 1, herbs: 1 }
 };
 
-const MONSTER_COUNTS = { 1: 4, 2: 6, 3: 8 };
-const SIDES_COUNTS = { 1: 2, 2: 3, 3: 4 };
-
 const defenseAbortControllers = {};
 const DEFENSE_TOOL_NAMES = ['get_planning_context', 'place_spike_trap', 'build_barricade', 'set_fire'];
 
@@ -231,8 +229,8 @@ export function registerDefenseTools(modelContext, gameState, onToolCall) {
     const nightNum = gameState.dayCount;
     const result = {
       nightNumber: nightNum,
-      expectedMonsters: MONSTER_COUNTS[nightNum] || 8,
-      expectedSides: SIDES_COUNTS[nightNum] || 4,
+      expectedMonsters: expectedMonsters(nightNum),
+      expectedSides: expectedSides(nightNum),
       inventory: { ...gameState.inventory },
       defenses: gameState.defenses.map(d => ({ ...d })),
       baseHealth: gameState.baseHealth,

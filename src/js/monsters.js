@@ -1,12 +1,33 @@
 // monsters.js — monster wave generation and night resolution
 
-const ALL_SIDES = ['north', 'south', 'east', 'west'];
-const MONSTER_CONFIG = { 1: { sides: 2, perSide: 2 }, 2: { sides: 3, perSide: 2 }, 3: { sides: 4, perSide: 2 } };
+// Wolves only come in on a road. There is no road on the west side.
+const ATTACK_SIDES = ['north', 'south', 'east'];
+
+const MONSTER_CONFIG = {
+  1: { sides: 2, perSide: 2 },   // 4 wolves
+  2: { sides: 3, perSide: 2 },   // 6 wolves
+  3: { sides: 3, perSide: 3 }    // 9 wolves
+};
+
+function planFor(dayCount) {
+  return MONSTER_CONFIG[dayCount] || MONSTER_CONFIG[3];
+}
+
+// How many wolves the night brings. The planning tool and the modal read this,
+// so all three always agree.
+export function expectedMonsters(dayCount) {
+  const p = planFor(dayCount);
+  return Math.min(p.sides, ATTACK_SIDES.length) * p.perSide;
+}
+
+export function expectedSides(dayCount) {
+  return Math.min(planFor(dayCount).sides, ATTACK_SIDES.length);
+}
 
 export function generateWaves(dayCount) {
-  const config = MONSTER_CONFIG[dayCount] || { sides: 4, perSide: 2 };
-  const shuffled = [...ALL_SIDES].sort(() => Math.random() - 0.5);
-  const sides = shuffled.slice(0, config.sides);
+  const config = planFor(dayCount);
+  const shuffled = [...ATTACK_SIDES].sort(() => Math.random() - 0.5);
+  const sides = shuffled.slice(0, Math.min(config.sides, ATTACK_SIDES.length));
   return sides.map(side => ({ side, count: config.perSide }));
 }
 

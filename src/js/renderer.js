@@ -274,11 +274,12 @@ export function renderWaveText(ctx, text) {
   ctx.fillText(text, w / 2, 6);
 }
 
+// The wolves come in along the dirt roads, one behind the other.
 const WOLF_POSITIONS = {
-  north: [{ x: 6, y: 0 }, { x: 8, y: 0 }],
-  south: [{ x: 6, y: 14 }, { x: 8, y: 14 }],
-  west:  [{ x: 0, y: 6 }, { x: 0, y: 8 }],
-  east:  [{ x: 14, y: 6 }, { x: 14, y: 8 }]
+  north: [{ x: 7, y: 0 }, { x: 7, y: 1 }, { x: 7, y: 2 }],
+  south: [{ x: 7, y: 14 }, { x: 7, y: 13 }, { x: 7, y: 12 }],
+  east:  [{ x: 14, y: 7 }, { x: 13, y: 7 }, { x: 12, y: 7 }],
+  west:  [{ x: 0, y: 7 }, { x: 1, y: 7 }, { x: 2, y: 7 }]
 };
 
 export function renderWolves(ctx, side, count, dead) {
