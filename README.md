@@ -141,5 +141,12 @@ src/
     ui.js          Health bar, inventory panel, agent log, debug panel
 ```
 
+## Asset credits
+
+- Bow and arrows: [sweeetpotatoo](https://sweeetpotatoo.itch.io/top-down-characters)
+- Terrain, trees, campfires, barricades: [ToffeeCraft](https://toffeecraft.itch.io/forest-nature-pack)
+- Red slime enemies: [Free Game Assets](https://free-game-assets.itch.io/pixel-art-slime-enemies-top-down-sprite-pack)
+- Erwin character sprite and grass tiles: [nogardlab](https://nogardlab.itch.io/stardew-farm-pixel-art-top-down-assets)
+
 ## License
 Apache License
